@@ -478,7 +478,7 @@ namespace RestaurantPOS
             logo.Name = "picRestaurantHeaderLogo";
             logo.SizeMode = PictureBoxSizeMode.Zoom;
             logo.BackColor = Color.Transparent;
-            logo.Size = new Size(75, 75);
+            logo.Size = new Size(46, 46);
             logo.Margin = Padding.Empty;
             logo.Padding = Padding.Empty;
             logo.TabStop = false;
@@ -600,9 +600,8 @@ namespace RestaurantPOS
             pnlMain.Visible = true;
             panel1.Visible = true;
 
-            // Vendos logon 75x75 edhe në headerin e aplikacionit.
+            // Vendos logon edhe në headerin e aplikacionit.
             EnsureRestaurantHeaderLogo();
-            ApplyFirstPageVisualStyle();
 
             // Pamja bazë e ekranit të porosisë
             this.BackColor = pageColor;
@@ -672,7 +671,6 @@ namespace RestaurantPOS
             // NGARKOJMË KAMARIERËT
             // =====================================
             LoadWaiters();
-            ApplyFirstPageVisualStyle();
 
             // =====================================
             // TEST DATABASE
@@ -815,64 +813,6 @@ namespace RestaurantPOS
             }
         }
 
-        // Dizajn i faqes së parë: header blu i errët dhe karta të pastra.
-        // Kjo metodë ndryshon vetëm pamjen, jo logjikën e porosive.
-        private void ApplyFirstPageVisualStyle()
-        {
-            Color navy = Color.FromArgb(8, 35, 78);
-            Color page = Color.FromArgb(241, 246, 252);
-            Color gold = Color.FromArgb(238, 169, 35);
-
-            if (panel1 != null)
-            {
-                panel1.BackColor = navy;
-                panel1.Padding = new Padding(12, 6, 12, 6);
-            }
-
-            if (pnlMain != null)
-                pnlMain.BackColor = page;
-
-            if (flowWaiters != null)
-            {
-                flowWaiters.BackColor = page;
-                flowWaiters.Padding = new Padding(22, 16, 22, 16);
-                flowWaiters.Margin = new Padding(0);
-                flowWaiters.WrapContents = true;
-                flowWaiters.AutoScroll = true;
-            }
-
-            if (panel1 != null)
-            {
-                Label title = FindRestaurantTitle(panel1);
-                if (title != null)
-                {
-                    title.ForeColor = Color.White;
-                    title.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-                    title.BackColor = Color.Transparent;
-                }
-            }
-
-            if (flowWaiters != null)
-            {
-                foreach (Control control in flowWaiters.Controls)
-                {
-                    Panel card = control as Panel;
-                    if (card == null) continue;
-                    card.BackColor = Color.White;
-                    card.Margin = new Padding(12);
-                    card.Padding = new Padding(10);
-                    MakePanelRounded(card, 18);
-                    Label label = card.Controls.OfType<Label>().FirstOrDefault();
-                    if (label != null)
-                    {
-                        label.ForeColor = Color.FromArgb(15, 39, 82);
-                        label.Font = new Font("Segoe UI", 17F, FontStyle.Bold);
-                        label.BackColor = Color.Transparent;
-                    }
-                }
-            }
-        }
-
         private void LoadWaiters()
         {
             try
@@ -937,11 +877,11 @@ namespace RestaurantPOS
         {
             Panel panel = new Panel();
 
-            panel.Width = 245;
-            panel.Height = 205;
-            panel.BackColor = Color.White;
-            panel.Margin = new Padding(12);
-            panel.Padding = new Padding(10);
+            panel.Width = 220;
+            panel.Height = 160;
+            panel.BackColor = Color.FromArgb(219, 234, 254);
+            panel.Margin = new Padding(9);
+            panel.Padding = new Padding(8);
             panel.Tag = waiterId;
             panel.Cursor = Cursors.Hand;
 
@@ -949,7 +889,7 @@ namespace RestaurantPOS
 
             Label label = new Label();
 
-            label.Text = "●\n\n" + (waiterName ?? "").ToUpperInvariant();
+            label.Text = "●\n" + (waiterName ?? "").ToUpperInvariant();
             label.Dock = DockStyle.Fill;
             label.TextAlign = ContentAlignment.MiddleCenter;
 
@@ -960,7 +900,7 @@ namespace RestaurantPOS
                     FontStyle.Bold
                 );
 
-            label.ForeColor = Color.FromArgb(15, 39, 82);
+            label.ForeColor = Color.Black;
 
             label.BackColor = Color.Transparent;
 
@@ -6235,7 +6175,7 @@ namespace RestaurantPOS
                 }
             }
             catch (Exception ex)
-            {
+            {s
                 MessageBox.Show(
                     "Gabim gjatë ruajtjes së porosisë:\n\n" +
                     ex.Message,
