@@ -88,8 +88,8 @@ namespace RestaurantPOS
         // =========================================
         // NGJYRAT
         // =========================================
-        private Color normalColor = Color.FromArgb(219, 234, 254);
-        private Color hoverColor = Color.FromArgb(37, 99, 235);
+        private Color normalColor = Color.FromArgb(235, 242, 251);
+        private Color hoverColor = Color.FromArgb(52, 92, 150);
 
         // =========================================
         // NGJYRAT E DIZAJNIT TË POROSISË
@@ -101,8 +101,8 @@ namespace RestaurantPOS
         private readonly Color categorySelectedColor = Color.FromArgb(29, 78, 216);
         private readonly Color categoryTextColor = Color.Black;
 
-        private readonly Color productColor = Color.White;
-        private readonly Color productHoverColor = Color.FromArgb(219, 234, 254);
+        private readonly Color productColor = Color.FromArgb(224, 233, 247);
+        private readonly Color productHoverColor = Color.FromArgb(224, 233, 247);
         private readonly Color productTextColor = Color.Black;
         private readonly Color priceColor = Color.FromArgb(21, 128, 61);
 
@@ -114,6 +114,7 @@ namespace RestaurantPOS
         private Label lblOrderContext = null;
         private Button btnTransferTable = null;
         private Button btnCommentOrder = null;
+        private Label lblOrderCount = null;
         private OrderItem selectedOrderItem = null;
         private Button btnBackFromAmbients = null;
         private Button btnBackFromTables = null;
@@ -174,6 +175,7 @@ namespace RestaurantPOS
             btnMenaxhoUshqimet.Click += btnMenaxhoUshqimet_Click;
             btnMenaxhoTavolinat.Click += btnMenaxhoTavolinat_Click;
             btnRaportiDitor.Click += btnRaportiDitor_Click;
+            btnRaportiDitor.Text = "Raporti mujor";
 
             // =====================================
             // KTHEHU NGA KAMARIERËT
@@ -343,6 +345,8 @@ namespace RestaurantPOS
                 if (control.HasChildren)
                     ApplyProfessionalTheme(control);
             }
+            RoundButton(btnPorosia, 12);
+            RoundButton(btnMenaxhimi, 12);
         }
 
 
@@ -377,6 +381,14 @@ namespace RestaurantPOS
 
         private void Form1_Resize(object sender, EventArgs e)
         {
+            if (this.FormBorderStyle == FormBorderStyle.None &&
+                this.WindowState == FormWindowState.Normal)
+            {
+                Rectangle workArea = Screen.FromControl(this).WorkingArea;
+                if (this.Bounds != workArea)
+                    this.Bounds = workArea;
+            }
+
             if (pnlPorosia == null || pnlPorosia.Parent != this)
                 return;
 
@@ -385,6 +397,64 @@ namespace RestaurantPOS
             pnlPorosia.Location = new Point(Math.Max(0, this.ClientSize.Width - pnlPorosia.Width), 0);
             LayoutOrderScreen();
             pnlPorosia.BringToFront();
+        }
+
+        // =========================================
+        // BUTONI DIL NË FAQEN KRYESORE
+        // =========================================
+        private Button btnExitProgram = null;
+
+        private void EnsureExitButton()
+        {
+            if (pnlMain == null)
+                return;
+
+            if (btnExitProgram == null || btnExitProgram.IsDisposed)
+            {
+                btnExitProgram = new Button();
+                btnExitProgram.Name = "btnDil";
+                btnExitProgram.Text = "DIL";
+                btnExitProgram.Size = new Size(120, 42);
+                btnExitProgram.FlatStyle = FlatStyle.Flat;
+                btnExitProgram.FlatAppearance.BorderSize = 0;
+                btnExitProgram.BackColor = Color.FromArgb(220, 75, 75);
+                btnExitProgram.ForeColor = Color.White;
+                btnExitProgram.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+                btnExitProgram.Cursor = Cursors.Hand;
+                btnExitProgram.Click += (sender, args) =>
+                {
+                    DialogResult answer = MessageBox.Show(
+                        "A dëshironi të dilni nga programi?",
+                        "Dil nga RestaurantPOS",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (answer == DialogResult.Yes)
+                        Application.Exit();
+                };
+
+                pnlMain.Controls.Add(btnExitProgram);
+            }
+
+            PositionExitButton();
+            btnExitProgram.BringToFront();
+            pnlMain.Resize -= PnlMain_ResizeForExitButton;
+            pnlMain.Resize += PnlMain_ResizeForExitButton;
+        }
+
+        private void PnlMain_ResizeForExitButton(object sender, EventArgs e)
+        {
+            PositionExitButton();
+        }
+
+        private void PositionExitButton()
+        {
+            if (pnlMain == null || btnExitProgram == null || btnExitProgram.IsDisposed)
+                return;
+
+            btnExitProgram.Location = new Point(
+                Math.Max(8, pnlMain.ClientSize.Width - btnExitProgram.Width - 18),
+                Math.Max(8, pnlMain.ClientSize.Height - btnExitProgram.Height - 18));
         }
 
         // Rregullon zonat e porosisë që kategoritë të mos mbulojnë ushqimet.
@@ -460,10 +530,14 @@ namespace RestaurantPOS
             if (panel1 == null)
                 return;
 
-            if (!System.IO.File.Exists(RestaurantHeaderLogoPath))
+            string headerLogoPath = System.IO.File.Exists(RestaurantHeaderLogoPath)
+                ? RestaurantHeaderLogoPath
+                : RestaurantLogoPath;
+
+            if (!System.IO.File.Exists(headerLogoPath))
             {
                 System.Diagnostics.Debug.WriteLine(
-                    "Nuk u gjet logoja e header-it: " + RestaurantHeaderLogoPath);
+                    "Nuk u gjet logoja. Vendos restaurant-logo1.png ose restaurant-logo.png në folderin e programit.");
                 return;
             }
 
@@ -478,14 +552,14 @@ namespace RestaurantPOS
             logo.Name = "picRestaurantHeaderLogo";
             logo.SizeMode = PictureBoxSizeMode.Zoom;
             logo.BackColor = Color.Transparent;
-            logo.Size = new Size(46, 46);
+            logo.Size = new Size(75, 75);
             logo.Margin = Padding.Empty;
             logo.Padding = Padding.Empty;
             logo.TabStop = false;
 
             try
             {
-                logo.Image = CreateTrimmedHeaderLogo();
+                logo.Image = CreateTrimmedHeaderLogo(headerLogoPath);
             }
             catch (Exception ex)
             {
@@ -526,9 +600,9 @@ namespace RestaurantPOS
 
         // Pret vetëm hapësirën plotësisht transparente rreth logos.
         // Alfa ruhet, prandaj në header nuk shfaqet sfond katror.
-        private static Bitmap CreateTrimmedHeaderLogo()
+        private static Bitmap CreateTrimmedHeaderLogo(string logoPath)
         {
-            using (Bitmap source = new Bitmap(RestaurantHeaderLogoPath))
+            using (Bitmap source = new Bitmap(logoPath))
             {
                 int minX = source.Width, minY = source.Height;
                 int maxX = -1, maxY = -1;
@@ -594,6 +668,14 @@ namespace RestaurantPOS
         // =========================================
         private void Form1_Load(object sender, EventArgs e)
         {
+            // Dritarja maksimizohet normalisht dhe nuk mbulon taskbar-in e Windows.
+            // Pa shirit titulli, por taskbar-i i Windows mbetet i dukshëm.
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.WindowState = FormWindowState.Normal;
+            this.StartPosition = FormStartPosition.Manual;
+            this.Bounds = Screen.FromControl(this).WorkingArea;
+            this.ShowInTaskbar = true;
+            this.TopMost = false;
             // =====================================
             // PANELI KRYESOR
             // =====================================
@@ -602,6 +684,9 @@ namespace RestaurantPOS
 
             // Vendos logon edhe në headerin e aplikacionit.
             EnsureRestaurantHeaderLogo();
+
+            // Butoni DIL shfaqet në faqen kryesore.
+            EnsureExitButton();
 
             // Pamja bazë e ekranit të porosisë
             this.BackColor = pageColor;
@@ -742,7 +827,7 @@ namespace RestaurantPOS
         {
             using (Form dialog = new Form())
             {
-                dialog.Text = "Verifikimi i kamarierit";
+                dialog.Text = "Hyrja e kamarierit";
                 dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dialog.StartPosition = FormStartPosition.CenterScreen;
                 dialog.ClientSize = new Size(300, 390);
@@ -751,14 +836,10 @@ namespace RestaurantPOS
                 dialog.ShowInTaskbar = false;
                 dialog.BackColor = Color.FromArgb(239, 244, 251);
 
-                Label title = new Label { Text = "Shëno ID-në e kamarierit", Font = new Font("Segoe UI", 13, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Location = new Point(10, 10), Size = new Size(280, 35) };
+                Label title = new Label { Text = "Shëno PIN-in me 4 shifra", Font = new Font("Segoe UI", 13, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Location = new Point(10, 10), Size = new Size(280, 35) };
                 Label who = new Label { Text = waiterName, Font = new Font("Segoe UI", 10, FontStyle.Bold), TextAlign = ContentAlignment.MiddleCenter, Location = new Point(10, 45), Size = new Size(280, 25) };
-                TextBox entry = new TextBox { Font = new Font("Segoe UI", 18, FontStyle.Bold), TextAlign = HorizontalAlignment.Center, ReadOnly = false, PasswordChar = '*', Location = new Point(25, 75), Size = new Size(250, 38), BackColor = Color.White };
-                entry.KeyPress += (sender, args) =>
-                {
-                    if (!char.IsControl(args.KeyChar) && !char.IsDigit(args.KeyChar))
-                        args.Handled = true;
-                };
+                TextBox entry = new TextBox { Font = new Font("Segoe UI", 18, FontStyle.Bold), TextAlign = HorizontalAlignment.Center, PasswordChar = '*', MaxLength = 4, Location = new Point(25, 75), Size = new Size(250, 38), BackColor = Color.White };
+                entry.KeyPress += (sender, args) => { if (!char.IsControl(args.KeyChar) && !char.IsDigit(args.KeyChar)) args.Handled = true; };
                 dialog.Controls.AddRange(new Control[] { title, who, entry });
 
                 string[] keys = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "Fshi", "0", "⌫" };
@@ -767,38 +848,31 @@ namespace RestaurantPOS
                     string key = keys[i];
                     Button b = new Button { Text = key, Font = new Font("Segoe UI", 13, FontStyle.Bold), Size = new Size(78, 48), Location = new Point(22 + (i % 3) * 86, 125 + (i / 3) * 53), BackColor = Color.White, ForeColor = Color.FromArgb(15, 23, 42), FlatStyle = FlatStyle.Flat };
                     b.FlatAppearance.BorderColor = Color.FromArgb(160, 175, 195);
-                    b.Click += (sender, args) =>
-                    {
-                        if (key == "Fshi") entry.Clear();
-                        else if (key == "⌫") { if (entry.Text.Length > 0) entry.Text = entry.Text.Substring(0, entry.Text.Length - 1); }
-                        else if (entry.Text.Length < 10) entry.Text += key;
-                    };
+                    b.Click += (sender, args) => { if (key == "Fshi") entry.Clear(); else if (key == "⌫") { if (entry.Text.Length > 0) entry.Text = entry.Text.Substring(0, entry.Text.Length - 1); } else if (entry.Text.Length < 4) entry.Text += key; };
                     dialog.Controls.Add(b);
                 }
                 Button ok = new Button { Text = "VAZHDO", Font = new Font("Segoe UI", 10, FontStyle.Bold), Location = new Point(22, 340), Size = new Size(122, 38), BackColor = Color.FromArgb(37, 99, 235), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.OK };
                 Button cancel = new Button { Text = "ANULO", Font = new Font("Segoe UI", 10, FontStyle.Bold), Location = new Point(156, 340), Size = new Size(122, 38), BackColor = Color.FromArgb(71, 85, 105), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.Cancel };
                 dialog.Controls.Add(ok); dialog.Controls.Add(cancel); dialog.AcceptButton = ok; dialog.CancelButton = cancel;
                 if (dialog.ShowDialog(this) != DialogResult.OK) return false;
-                if (!int.TryParse(entry.Text, out int enteredId) || enteredId != waiterId)
+                if (entry.Text.Length != 4 || !entry.Text.All(char.IsDigit))
                 {
-                    MessageBox.Show("ID-ja nuk është e saktë për këtë kamarier.", "Verifikim", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("PIN-i duhet të ketë saktësisht 4 shifra.", "PIN i pavlefshëm", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return false;
                 }
 
-                // Verifikimi bëhet sipas ID-së dhe statusit aktiv në databazë.
-                // Emri në kartë mund të përmbajë simbole/ndërprerje rreshti, ndaj nuk krahasohet me Name.
                 try
                 {
                     using (SqlConnection connection = DbConnection.GetConnection())
                     {
                         connection.Open();
-                        using (SqlCommand cmd = new SqlCommand(
-                            "SELECT COUNT(1) FROM Kamarierat WHERE WaiterID = @id AND Active = 1", connection))
+                        using (SqlCommand cmd = new SqlCommand("SELECT COUNT(1) FROM Kamarierat WHERE WaiterID = @id AND Active = 1 AND Pin = @pin", connection))
                         {
-                            cmd.Parameters.Add("@id", SqlDbType.Int).Value = enteredId;
+                            cmd.Parameters.Add("@id", SqlDbType.Int).Value = waiterId;
+                            cmd.Parameters.Add("@pin", SqlDbType.NVarChar, 20).Value = entry.Text;
                             if (Convert.ToInt32(cmd.ExecuteScalar()) != 1)
                             {
-                                MessageBox.Show("Kamarieri nuk u verifikua në databazë ose nuk është aktiv.", "Verifikim", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                MessageBox.Show("PIN-i nuk është i saktë ose kamarieri nuk është aktiv.", "Hyrje e refuzuar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                 return false;
                             }
                         }
@@ -806,10 +880,113 @@ namespace RestaurantPOS
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Nuk mund të verifikohet ID-ja në databazë.\n" + ex.Message, "Gabim", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Nuk mund të verifikohet PIN-i në databazë.\n" + ex.Message, "Gabim", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
                 return true;
+            }
+        }
+
+        private string PromptForFourDigitPin(string title)
+        {
+            using (Form f = new Form())
+            using (TextBox t = new TextBox())
+            using (Label l = new Label())
+            using (Button ok = new Button())
+            using (Button cancel = new Button())
+            {
+                f.Text = title; f.FormBorderStyle = FormBorderStyle.FixedDialog;
+                f.StartPosition = FormStartPosition.CenterParent; f.ClientSize = new Size(300, 140);
+                f.MaximizeBox = false; f.MinimizeBox = false; f.ShowInTaskbar = false;
+                l.Text = "Vendos PIN me 4 shifra:"; l.SetBounds(12, 12, 276, 25);
+                t.SetBounds(18, 42, 264, 32); t.Font = new Font("Segoe UI", 16, FontStyle.Bold);
+                t.PasswordChar = '*'; t.MaxLength = 4; t.TextAlign = HorizontalAlignment.Center;
+                t.KeyPress += (s, e) => { if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar)) e.Handled = true; };
+                ok.Text = "RUAJ"; ok.SetBounds(18, 88, 120, 35); ok.DialogResult = DialogResult.OK;
+                cancel.Text = "ANULO"; cancel.SetBounds(162, 88, 120, 35); cancel.DialogResult = DialogResult.Cancel;
+                f.Controls.AddRange(new Control[] { l, t, ok, cancel }); f.AcceptButton = ok; f.CancelButton = cancel;
+                if (f.ShowDialog(this) != DialogResult.OK) return null;
+                if (t.Text.Length != 4 || !t.Text.All(char.IsDigit))
+                { MessageBox.Show("PIN-i duhet të ketë saktësisht 4 shifra.", "PIN i pavlefshëm", MessageBoxButtons.OK, MessageBoxIcon.Warning); return null; }
+                return t.Text;
+            }
+        }
+
+        private bool VerifyAdministrator()
+        {
+            string configuredPin = Environment.GetEnvironmentVariable("RESTAURANTPOS_ADMIN_PIN", EnvironmentVariableTarget.User);
+            if (string.IsNullOrWhiteSpace(configuredPin))
+            {
+                MessageBox.Show("Nuk është konfiguruar RESTAURANTPOS_ADMIN_PIN për përdoruesin e Windows. Vendose këtë variabël dhe rihape programin.", "Konfigurimi i administratorit mungon", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            using (Form f = new Form())
+            using (TextBox t = new TextBox())
+            using (Label l = new Label())
+            using (Button ok = new Button())
+            using (Button cancel = new Button())
+            {
+                f.Text = "Verifikimi i administratorit"; f.FormBorderStyle = FormBorderStyle.FixedDialog;
+                f.StartPosition = FormStartPosition.CenterParent; f.ClientSize = new Size(330, 145);
+                f.MaximizeBox = false; f.MinimizeBox = false;
+                l.Text = "PIN / fjalëkalimi i administratorit:"; l.SetBounds(12, 12, 306, 25);
+                t.SetBounds(16, 42, 298, 30); t.PasswordChar = '*'; t.Font = new Font("Segoe UI", 14, FontStyle.Bold);
+                ok.Text = "VAZHDO"; ok.SetBounds(16, 88, 135, 35); ok.DialogResult = DialogResult.OK;
+                cancel.Text = "ANULO"; cancel.SetBounds(179, 88, 135, 35); cancel.DialogResult = DialogResult.Cancel;
+                f.Controls.AddRange(new Control[] { l, t, ok, cancel }); f.AcceptButton = ok; f.CancelButton = cancel;
+                if (f.ShowDialog(this) != DialogResult.OK) return false;
+                if (!string.Equals(t.Text, configuredPin, StringComparison.Ordinal))
+                { MessageBox.Show("PIN-i i administratorit nuk është i saktë.", "Hyrje e refuzuar", MessageBoxButtons.OK, MessageBoxIcon.Warning); return false; }
+                return true;
+            }
+        }
+
+        private string PromptForPaymentMethod()
+        {
+            using (Form f = new Form())
+            using (Button cash = new Button())
+            using (Button card = new Button())
+            using (Button cancel = new Button())
+            {
+                f.Text = "Mënyra e pagesës"; f.FormBorderStyle = FormBorderStyle.FixedDialog;
+                f.StartPosition = FormStartPosition.CenterParent; f.ClientSize = new Size(330, 105);
+                f.MaximizeBox = false; f.MinimizeBox = false;
+                cash.Text = "CASH"; cash.SetBounds(12, 20, 95, 55);
+                card.Text = "KARTË"; card.SetBounds(117, 20, 95, 55);
+                cancel.Text = "ANULO"; cancel.SetBounds(222, 20, 95, 55);
+                string selected = null;
+                cash.Click += (s, e) => { selected = "Cash"; f.DialogResult = DialogResult.OK; f.Close(); };
+                card.Click += (s, e) => { selected = "Card"; f.DialogResult = DialogResult.OK; f.Close(); };
+                cancel.Click += (s, e) => { f.DialogResult = DialogResult.Cancel; f.Close(); };
+                f.Controls.AddRange(new Control[] { cash, card, cancel });
+                return f.ShowDialog(this) == DialogResult.OK ? selected : null;
+            }
+        }
+
+        private void SaveCompletedSale(SqlConnection con, SqlTransaction transaction, int orderId, int waiterId, int tableId, decimal total, string paymentMethod)
+        {
+            string saleSql = @"INSERT INTO dbo.Sales (OrderID, WaiterID, TableID, SaleDate, PaymentMethod, Total)
+                               OUTPUT INSERTED.SaleID
+                               VALUES (@OrderID, @WaiterID, @TableID, SYSDATETIME(), @PaymentMethod, @Total)";
+            int saleId;
+            using (SqlCommand cmd = new SqlCommand(saleSql, con, transaction))
+            {
+                cmd.Parameters.Add("@OrderID", SqlDbType.Int).Value = orderId;
+                cmd.Parameters.Add("@WaiterID", SqlDbType.Int).Value = waiterId;
+                cmd.Parameters.Add("@TableID", SqlDbType.Int).Value = tableId;
+                cmd.Parameters.Add("@PaymentMethod", SqlDbType.NVarChar, 30).Value = paymentMethod;
+                SqlParameter p = cmd.Parameters.Add("@Total", SqlDbType.Decimal); p.Precision = 10; p.Scale = 2; p.Value = total;
+                saleId = Convert.ToInt32(cmd.ExecuteScalar());
+            }
+            string itemSql = @"INSERT INTO dbo.SaleItems (SaleID, ProductID, ProductName, Quantity, UnitPrice, LineTotal, Comment)
+                               SELECT @SaleID, oi.ProductID, p.Name, oi.Quantity, oi.UnitPrice, oi.Total, oi.Comment
+                               FROM dbo.OrderItems oi INNER JOIN dbo.Products p ON p.ProductID = oi.ProductID
+                               WHERE oi.OrderID = @OrderID";
+            using (SqlCommand cmd = new SqlCommand(itemSql, con, transaction))
+            {
+                cmd.Parameters.Add("@SaleID", SqlDbType.Int).Value = saleId;
+                cmd.Parameters.Add("@OrderID", SqlDbType.Int).Value = orderId;
+                cmd.ExecuteNonQuery();
             }
         }
 
@@ -877,11 +1054,11 @@ namespace RestaurantPOS
         {
             Panel panel = new Panel();
 
-            panel.Width = 220;
-            panel.Height = 160;
-            panel.BackColor = Color.FromArgb(219, 234, 254);
-            panel.Margin = new Padding(9);
-            panel.Padding = new Padding(8);
+            panel.Width = 232;
+            panel.Height = 166;
+            panel.BackColor = Color.White;
+            panel.Margin = new Padding(10);
+            panel.Padding = new Padding(10);
             panel.Tag = waiterId;
             panel.Cursor = Cursors.Hand;
 
@@ -889,7 +1066,7 @@ namespace RestaurantPOS
 
             Label label = new Label();
 
-            label.Text = "●\n" + (waiterName ?? "").ToUpperInvariant();
+            label.Text = "♟\n" + (waiterName ?? "").ToUpperInvariant();
             label.Dock = DockStyle.Fill;
             label.TextAlign = ContentAlignment.MiddleCenter;
 
@@ -1148,14 +1325,14 @@ namespace RestaurantPOS
             Panel panel = new Panel();
 
             // Madhësia e kartës
-            panel.Width = 200;
-            panel.Height = 150;
+            panel.Width = 218;
+            panel.Height = 158;
             panel.Cursor = Cursors.Hand;
-            panel.Padding = new Padding(8);
+            panel.Padding = new Padding(10);
 
-            // Pamja
-            panel.BackColor = Color.FromArgb(219, 234, 254);
-            panel.Margin = new Padding(8);
+            // Pamje e pastër, me kontrast dhe hapësirë më të mirë.
+            panel.BackColor = Color.White;
+            panel.Margin = new Padding(10);
 
             // Ruajmë ID-në e ambientit
             panel.Tag = ambientId;
@@ -1355,6 +1532,8 @@ namespace RestaurantPOS
             object sender,
             EventArgs e)
         {
+            if (!VerifyAdministrator()) return;
+
             pnlMain.Visible = false;
 
             pnlAmbienti.Visible = false;
@@ -1606,6 +1785,9 @@ namespace RestaurantPOS
                 return;
             }
 
+            string pin = PromptForFourDigitPin("PIN për kamarierin e ri");
+            if (pin == null) return;
+
             try
             {
                 using (SqlConnection con =
@@ -1615,9 +1797,9 @@ namespace RestaurantPOS
 
                     string query = @"
                         INSERT INTO Kamarierat
-                        (Name, Active)
+                        (Name, Active, Pin)
                         VALUES
-                        (@Name, 1)";
+                        (@Name, 1, @Pin)";
 
                     using (SqlCommand cmd =
                            new SqlCommand(query, con))
@@ -1626,6 +1808,7 @@ namespace RestaurantPOS
                             "@Name",
                             emri
                         );
+                        cmd.Parameters.Add("@Pin", SqlDbType.NVarChar, 20).Value = pin;
 
                         cmd.ExecuteNonQuery();
                     }
@@ -1689,6 +1872,9 @@ namespace RestaurantPOS
                 return;
             }
 
+            string pin = PromptForFourDigitPin("PIN i ri i kamarierit");
+            if (pin == null) return;
+
             try
             {
                 using (SqlConnection con =
@@ -1698,7 +1884,7 @@ namespace RestaurantPOS
 
                     string query = @"
                         UPDATE Kamarierat
-                        SET Name = @Name
+                        SET Name = @Name, Pin = @Pin
                         WHERE WaiterID = @WaiterID";
 
                     using (SqlCommand cmd =
@@ -1708,6 +1894,7 @@ namespace RestaurantPOS
                             "@Name",
                             emri
                         );
+                        cmd.Parameters.Add("@Pin", SqlDbType.NVarChar, 20).Value = pin;
 
                         cmd.Parameters.AddWithValue(
                             "@WaiterID",
@@ -3752,16 +3939,310 @@ namespace RestaurantPOS
         // RAPORTI DITOR
         // =====================================================
 
-        private void btnRaportiDitor_Click(
-            object sender,
-            EventArgs e)
+        private void btnRaportiDitor_Click(object sender, EventArgs e)
         {
-            MessageBox.Show(
-                "Këtu do të ndërtojmë raportin ditor.",
-                "Raporti Ditor",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information
-            );
+            DateTime month = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            using (Form pick = new Form())
+            using (DateTimePicker date = new DateTimePicker())
+            using (Button show = new Button())
+            using (Button cancel = new Button())
+            {
+                pick.Text = "Zgjidh muajin e raportit";
+                pick.FormBorderStyle = FormBorderStyle.FixedDialog;
+                pick.StartPosition = FormStartPosition.CenterParent;
+                pick.ClientSize = new Size(360, 135);
+                pick.MaximizeBox = false;
+                pick.MinimizeBox = false;
+
+                Label label = new Label
+                {
+                    Text = "Muaji i raportit:",
+                    Location = new Point(12, 10),
+                    Size = new Size(320, 22)
+                };
+                date.Format = DateTimePickerFormat.Custom;
+                date.CustomFormat = "MMMM yyyy";
+                date.ShowUpDown = true;
+                date.Value = month;
+                date.SetBounds(12, 37, 190, 30);
+
+                show.Text = "SHFAQ RAPORTIN";
+                show.SetBounds(12, 82, 190, 38);
+                cancel.Text = "ANULO";
+                cancel.SetBounds(218, 82, 125, 38);
+                show.Click += (s, args) =>
+                {
+                    month = new DateTime(date.Value.Year, date.Value.Month, 1);
+                    pick.DialogResult = DialogResult.OK;
+                    pick.Close();
+                };
+                cancel.Click += (s, args) =>
+                {
+                    pick.DialogResult = DialogResult.Cancel;
+                    pick.Close();
+                };
+                pick.Controls.AddRange(new Control[] { label, date, show, cancel });
+                pick.AcceptButton = show;
+                pick.CancelButton = cancel;
+                if (pick.ShowDialog(this) != DialogResult.OK) return;
+            }
+
+            try
+            {
+                DateTime end = month.AddMonths(1);
+                int count = 0;
+                decimal total = 0m;
+                DataTable itemData = new DataTable();
+                DataTable waiterData = new DataTable();
+
+                using (SqlConnection con = DbConnection.GetConnection())
+                {
+                    con.Open();
+                    using (SqlCommand cmd = new SqlCommand(@"
+                        SELECT COUNT(*), COALESCE(SUM(Total), 0)
+                        FROM dbo.Sales
+                        WHERE SaleDate >= @Start AND SaleDate < @End", con))
+                    {
+                        cmd.Parameters.Add("@Start", SqlDbType.DateTime2).Value = month;
+                        cmd.Parameters.Add("@End", SqlDbType.DateTime2).Value = end;
+                        using (SqlDataReader rd = cmd.ExecuteReader())
+                        {
+                            if (rd.Read())
+                            {
+                                count = Convert.ToInt32(rd[0]);
+                                total = Convert.ToDecimal(rd[1]);
+                            }
+                        }
+                    }
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(@"
+                        SELECT
+                            s.WaiterID,
+                            COALESCE(k.Name, N'(Kamarier i fshirë)') AS Kamarieri,
+                            si.ProductName AS Produkti,
+                            SUM(si.Quantity) AS Sasia,
+                            SUM(si.LineTotal) AS Shitja
+                        FROM dbo.Sales s
+                        INNER JOIN dbo.SaleItems si ON si.SaleID = s.SaleID
+                        LEFT JOIN dbo.Kamarierat k ON k.WaiterID = s.WaiterID
+                        WHERE s.SaleDate >= @Start AND s.SaleDate < @End
+                        GROUP BY s.WaiterID, k.Name, si.ProductName
+                        ORDER BY Kamarieri, Produkti", con))
+                    {
+                        da.SelectCommand.Parameters.Add("@Start", SqlDbType.DateTime2).Value = month;
+                        da.SelectCommand.Parameters.Add("@End", SqlDbType.DateTime2).Value = end;
+                        da.Fill(itemData);
+                    }
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(@"
+                        SELECT
+                            s.WaiterID,
+                            COALESCE(k.Name, N'(Kamarier i fshirë)') AS Kamarieri,
+                            COUNT(*) AS Llogari,
+                            SUM(s.Total) AS Shitje
+                        FROM dbo.Sales s
+                        LEFT JOIN dbo.Kamarierat k ON k.WaiterID = s.WaiterID
+                        WHERE s.SaleDate >= @Start AND s.SaleDate < @End
+                        GROUP BY s.WaiterID, k.Name
+                        ORDER BY Kamarieri", con))
+                    {
+                        da.SelectCommand.Parameters.Add("@Start", SqlDbType.DateTime2).Value = month;
+                        da.SelectCommand.Parameters.Add("@End", SqlDbType.DateTime2).Value = end;
+                        da.Fill(waiterData);
+                    }
+                }
+
+                using (Form report = new Form())
+                using (Label summary = new Label())
+                using (Label waiterTitle = new Label())
+                using (Label detailTitle = new Label())
+                using (DataGridView waiterGrid = new DataGridView())
+                using (DataGridView itemGrid = new DataGridView())
+                using (Button print = new Button())
+                using (Button removeItem = new Button())
+                using (Button close = new Button())
+                {
+                    report.Text = "Raporti mujor - " + month.ToString("MMMM yyyy");
+                    report.StartPosition = FormStartPosition.CenterParent;
+                    report.Size = new Size(900, 720);
+                    report.MinimumSize = new Size(760, 600);
+                    report.BackColor = Color.FromArgb(241, 245, 249);
+
+                    summary.Text = "MUAJI: " + month.ToString("MMMM yyyy") +
+                        "     FATURA: " + count +
+                        "     TOTALI MUJOR: " + total.ToString("N2") + " DEN";
+                    summary.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+                    summary.SetBounds(12, 12, 850, 35);
+
+                    waiterTitle.Text = "Totali mujor sipas kamarierit";
+                    waiterTitle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+                    waiterTitle.SetBounds(12, 52, 850, 22);
+
+                    waiterGrid.SetBounds(12, 76, 850, 190);
+                    waiterGrid.ReadOnly = true;
+                    waiterGrid.AllowUserToAddRows = false;
+                    waiterGrid.AllowUserToDeleteRows = false;
+                    waiterGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                    waiterGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                    waiterGrid.RowHeadersVisible = false;
+                    waiterGrid.DataSource = waiterData;
+                    if (waiterGrid.Columns["WaiterID"] != null) waiterGrid.Columns["WaiterID"].Visible = false;
+                    if (waiterGrid.Columns["Kamarieri"] != null) waiterGrid.Columns["Kamarieri"].HeaderText = "Kamarieri";
+                    if (waiterGrid.Columns["Llogari"] != null) waiterGrid.Columns["Llogari"].HeaderText = "Fatura";
+                    if (waiterGrid.Columns["Shitje"] != null)
+                    {
+                        waiterGrid.Columns["Shitje"].HeaderText = "Totali (DEN)";
+                        waiterGrid.Columns["Shitje"].DefaultCellStyle.Format = "N2";
+                    }
+
+                    detailTitle.Text = "Ushqimet e shitura për çdo kamarier gjatë muajit";
+                    detailTitle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+                    detailTitle.SetBounds(12, 275, 850, 22);
+
+                    itemGrid.SetBounds(12, 299, 850, 320);
+                    itemGrid.ReadOnly = true;
+                    itemGrid.AllowUserToAddRows = false;
+                    itemGrid.AllowUserToDeleteRows = false;
+                    itemGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                    itemGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                    itemGrid.MultiSelect = false;
+                    itemGrid.RowHeadersVisible = false;
+                    itemGrid.DataSource = itemData;
+                    if (itemGrid.Columns["WaiterID"] != null) itemGrid.Columns["WaiterID"].Visible = false;
+                    if (itemGrid.Columns["Kamarieri"] != null) itemGrid.Columns["Kamarieri"].HeaderText = "Kamarieri";
+                    if (itemGrid.Columns["Produkti"] != null) itemGrid.Columns["Produkti"].HeaderText = "Produkti";
+                    if (itemGrid.Columns["Sasia"] != null) itemGrid.Columns["Sasia"].HeaderText = "Sasia mujore";
+                    if (itemGrid.Columns["Shitja"] != null)
+                    {
+                        itemGrid.Columns["Shitja"].HeaderText = "Shitja (DEN)";
+                        itemGrid.Columns["Shitja"].DefaultCellStyle.Format = "N2";
+                    }
+
+                    print.Text = "PRINT RAPORTIN (POS 80mm)";
+                    print.SetBounds(12, 630, 260, 38);
+                    removeItem.Text = "FSHI USHQIMIN E ZGJEDHUR";
+                    removeItem.SetBounds(290, 630, 300, 38);
+                    removeItem.BackColor = Color.FromArgb(220, 75, 75);
+                    removeItem.ForeColor = Color.White;
+                    removeItem.FlatStyle = FlatStyle.Flat;
+                    removeItem.FlatAppearance.BorderSize = 0;
+                    removeItem.Click += (s, args) =>
+                    {
+                        if (itemGrid.SelectedRows.Count == 0)
+                        {
+                            MessageBox.Show("Së pari selekto ushqimin që dëshiron ta largosh.",
+                                "Raporti mujor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            return;
+                        }
+                        DialogResult answer = MessageBox.Show(
+                            "A dëshiron ta largosh ushqimin e zgjedhur nga raporti dhe printimi?\n\n" +
+                            "Ky veprim nuk e fshin shitjen nga databaza.",
+                            "Konfirmo largimin", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                        if (answer != DialogResult.Yes) return;
+                        DataRowView selectedRow = itemGrid.SelectedRows[0].DataBoundItem as DataRowView;
+                        if (selectedRow != null) itemData.Rows.Remove(selectedRow.Row);
+                    };
+
+                    close.Text = "MBYLL";
+                    close.SetBounds(744, 630, 118, 38);
+                    print.Click += (s, args) =>
+                    {
+                        try
+                        {
+                            PrintMonthlyReport80mm(month, count, total, waiterData, itemData);
+                            MessageBox.Show("Raporti mujor u dërgua te printeri POS.",
+                                "Raporti mujor", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Raporti nuk u printua.\n\n" + ex.Message,
+                                "Gabim printimi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    };
+                    close.Click += (s, args) => report.Close();
+                    report.Controls.AddRange(new Control[] {
+                        summary, waiterTitle, waiterGrid, detailTitle, itemGrid, print, removeItem, close
+                    });
+                    report.ShowDialog(this);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gabim gjatë krijimit të raportit mujor:\n" + ex.Message,
+                    "Raporti mujor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void PrintMonthlyReport80mm(
+            DateTime month,
+            int billCount,
+            decimal grandTotal,
+            DataTable waiterData,
+            DataTable itemData)
+        {
+            const int ticketWidth = 42;
+            List<byte> output = new List<byte>();
+            output.AddRange(new byte[] { 0x1B, 0x40 });
+            output.AddRange(new byte[] { 0x1B, 0x61, 0x01 });
+            output.AddRange(GetLogoEscPosBytes(200));
+            output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
+            output.AddRange(EscPosText("RESTAURANT MEROVA\n"));
+            output.AddRange(EscPosText("RAPORTI MUJOR\n"));
+            output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
+            output.AddRange(EscPosText(month.ToString("MMMM yyyy") + "\n"));
+            output.AddRange(new byte[] { 0x1B, 0x61, 0x00 });
+            output.AddRange(EscPosText(new string('-', ticketWidth) + "\n"));
+            output.AddRange(EscPosText("Fatura te mbyllura: " + billCount + "\n"));
+            output.AddRange(EscPosText("TOTALI MUJOR: " + grandTotal.ToString("0.00") + " DEN\n"));
+            output.AddRange(EscPosText(new string('-', ticketWidth) + "\n\n"));
+
+            foreach (DataRow waiter in waiterData.Rows)
+            {
+                int waiterId = Convert.ToInt32(waiter["WaiterID"]);
+                string waiterName = CleanForPos(Convert.ToString(waiter["Kamarieri"]));
+                decimal waiterTotal = Convert.ToDecimal(waiter["Shitje"]);
+                int waiterBills = Convert.ToInt32(waiter["Llogari"]);
+
+                output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
+                output.AddRange(EscPosText(waiterName + "\n"));
+                output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
+                output.AddRange(EscPosText("Fatura: " + waiterBills + "\n"));
+
+                foreach (DataRow item in itemData.Select("WaiterID = " + waiterId, "Produkti ASC"))
+                {
+                    string product = CleanForPos(Convert.ToString(item["Produkti"]));
+                    int quantity = Convert.ToInt32(item["Sasia"]);
+                    decimal productTotal = Convert.ToDecimal(item["Shitja"]);
+                    string qtyText = "x" + quantity;
+                    string amountText = productTotal.ToString("0.00");
+                    int nameWidth = Math.Max(8, ticketWidth - qtyText.Length - amountText.Length - 2);
+                    if (product.Length > nameWidth) product = product.Substring(0, nameWidth);
+                    string line = product.PadRight(nameWidth) + " " + qtyText + " " + amountText;
+                    if (line.Length > ticketWidth) line = line.Substring(0, ticketWidth);
+                    output.AddRange(EscPosText(line + "\n"));
+                }
+
+                string waiterLine = "TOTALI " + waiterName;
+                if (waiterLine.Length > ticketWidth - 10)
+                    waiterLine = waiterLine.Substring(0, ticketWidth - 10);
+                output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
+                output.AddRange(EscPosText(waiterLine + "\n"));
+                output.AddRange(EscPosText(waiterTotal.ToString("0.00") + " DEN\n"));
+                output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
+                output.AddRange(EscPosText(new string('-', ticketWidth) + "\n\n"));
+            }
+
+            output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
+            output.AddRange(EscPosText("TOTALI I TE GJITHE KAMARIEREVE\n"));
+            output.AddRange(EscPosText(grandTotal.ToString("0.00") + " DEN\n"));
+            output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
+            output.AddRange(EscPosText("\nRaporti mujor - Restaurant Merova\n\n"));
+            output.AddRange(new byte[] { 0x1B, 0x64, 0x05 });
+            output.AddRange(new byte[] { 0x1D, 0x56, 0x00 });
+
+            if (!RawPrinterHelper.SendBytesToPrinter(TestPrinterName, output.ToArray()))
+                throw new Exception("Printeri '" + TestPrinterName +
+                    "' nuk pranoi raportin RAW. Kontrollo emrin e printerit në Windows.");
         }
 
 
@@ -3776,6 +4257,9 @@ namespace RestaurantPOS
             try
             {
                 flowTavolinat.Controls.Clear();
+                flowTavolinat.FlowDirection = FlowDirection.LeftToRight;
+                flowTavolinat.WrapContents = true;
+                flowTavolinat.AutoScroll = true;
 
                 if (selectedAmbientId == 0)
                     return;
@@ -3786,12 +4270,23 @@ namespace RestaurantPOS
 
                     string query = @"
                         SELECT
-                            TableID,
-                            TableNumber,
-                            Status
-                        FROM RestaurantTables
-                        WHERE AmbientID = @AmbientID
-                        ORDER BY TableNumber";
+                            rt.TableID,
+                            rt.TableNumber,
+                            rt.Status,
+                            ISNULL(o.WaiterID, 0) AS OwnerWaiterID,
+                            ISNULL(k.Name, '') AS OwnerWaiterName
+                        FROM RestaurantTables rt
+                        OUTER APPLY
+                        (
+                            SELECT TOP 1 o.WaiterID
+                            FROM Orders o
+                            WHERE o.TableID = rt.TableID AND o.Status = 'Open'
+                            ORDER BY o.CreatedAT DESC, o.OrderID DESC
+                        ) o
+                        LEFT JOIN Kamarierat k
+                            ON k.WaiterID = o.WaiterID
+                        WHERE rt.AmbientID = @AmbientID
+                        ORDER BY rt.TableNumber";
 
                     using (SqlCommand cmd = new SqlCommand(query, con))
                     {
@@ -3804,11 +4299,15 @@ namespace RestaurantPOS
                                 int tableId = Convert.ToInt32(reader["TableID"]);
                                 int tableNumber = Convert.ToInt32(reader["TableNumber"]);
                                 string status = reader["Status"].ToString();
+                                int ownerWaiterId = Convert.ToInt32(reader["OwnerWaiterID"]);
+                                string ownerWaiterName = Convert.ToString(reader["OwnerWaiterName"]);
 
                                 Panel tablePanel = CreateTablePanel(
                                     tableId,
                                     tableNumber,
-                                    status
+                                    status,
+                                    ownerWaiterId,
+                                    ownerWaiterName
                                 );
 
                                 flowTavolinat.Controls.Add(tablePanel);
@@ -3835,14 +4334,21 @@ namespace RestaurantPOS
         private Panel CreateTablePanel(
             int tableId,
             int tableNumber,
-            string status)
+            string status,
+            int ownerWaiterId,
+            string ownerWaiterName)
         {
             Panel panel = new Panel();
 
-            panel.Width = 158;
-            panel.Height = 116;
-            panel.Margin = new Padding(6);
-            panel.Padding = new Padding(6);
+            int availableWidth = flowTavolinat != null
+                ? flowTavolinat.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 24
+                : 1120;
+            int tableCardWidth = Math.Max(125, (availableWidth - (6 * 14)) / 6);
+
+            panel.Width = tableCardWidth;
+            panel.Height = 132;
+            panel.Margin = new Padding(7);
+            panel.Padding = new Padding(8);
             panel.Cursor = Cursors.Hand;
             panel.Tag = tableId;
             panel.Cursor = Cursors.Hand;
@@ -3853,11 +4359,12 @@ namespace RestaurantPOS
             );
 
             panel.BackColor = occupied
-                ? Color.FromArgb(190, 35, 45)
-                : Color.FromArgb(226, 234, 246);
+                ? Color.FromArgb(190, 55, 62)
+                : Color.White;
 
             // Statusi ruhet këtu që hover/click ta dinë gjendjen.
             panel.AccessibleName = status;
+            panel.AccessibleDescription = ownerWaiterId.ToString() + "|" + (ownerWaiterName ?? "");
 
             MakePanelRounded(panel, 25);
 
@@ -3941,7 +4448,7 @@ namespace RestaurantPOS
             );
 
             panel.BackColor = occupied
-                ? Color.FromArgb(220, 60, 60)
+                ? Color.FromArgb(190, 55, 62)
                 : Color.White;
 
             if (panel.Controls.Count > 0)
@@ -3952,6 +4459,52 @@ namespace RestaurantPOS
                 {
                     label.ForeColor = occupied ? Color.White : Color.Black;
                 }
+            }
+        }
+
+
+        private bool CanCurrentWaiterOpenTable(int tableId)
+        {
+            try
+            {
+                using (SqlConnection con = DbConnection.GetConnection())
+                {
+                    con.Open();
+                    using (SqlCommand cmd = new SqlCommand(@"
+                        SELECT TOP 1 o.WaiterID, COALESCE(k.Name, N'kamarieri tjetër') AS WaiterName
+                        FROM Orders o
+                        LEFT JOIN Kamarierat k ON k.WaiterID = o.WaiterID
+                        WHERE o.TableID = @TableID AND o.Status = 'Open'
+                        ORDER BY o.CreatedAT DESC, o.OrderID DESC", con))
+                    {
+                        cmd.Parameters.AddWithValue("@TableID", tableId);
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                int ownerId = Convert.ToInt32(reader["WaiterID"]);
+                                string ownerName = Convert.ToString(reader["WaiterName"]);
+                                if (ownerId != selectedWaiterId)
+                                {
+                                    MessageBox.Show(
+                                        "Kjo tavolinë është e zënë nga kamarieri " + ownerName + ".\n\n" +
+                                        "Nuk mund të hapësh ose ndryshosh porosinë e një kamarieri tjetër.",
+                                        "Tavolina është e zënë",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Warning);
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Nuk mund të verifikohet pronari i tavolinës:\n\n" + ex.Message,
+                    "Gabim", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
         }
 
@@ -3969,11 +4522,36 @@ namespace RestaurantPOS
                 return;
 
             selectedTableId = Convert.ToInt32(panel.Tag);
+            if (!CanCurrentWaiterOpenTable(selectedTableId))
+            {
+                selectedTableId = 0;
+                return;
+            }
 
             bool occupied = panel.AccessibleName.Equals(
                 "Occupied",
                 StringComparison.OrdinalIgnoreCase
             );
+
+            if (occupied)
+            {
+                string[] ownerInfo = (panel.AccessibleDescription ?? "0|").Split(new char[] { '|' }, 2);
+                int ownerWaiterId = 0;
+                int.TryParse(ownerInfo[0], out ownerWaiterId);
+                string ownerName = ownerInfo.Length > 1 ? ownerInfo[1] : "një kamarieri tjetër";
+
+                if (ownerWaiterId > 0 && ownerWaiterId != selectedWaiterId)
+                {
+                    selectedTableId = 0;
+                    MessageBox.Show(
+                        "Kjo tavolinë është e zënë nga kamarieri " + ownerName + ".\n\n" +
+                        "Nuk mund të hapësh ose ndryshosh porosinë e një kamarieri tjetër.",
+                        "Tavolina është e zënë",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning);
+                    return;
+                }
+            }
 
             // =====================================
             // TAVOLINË E ZËNË:
@@ -4117,8 +4695,9 @@ namespace RestaurantPOS
                             selectedOpenOrderId =
                                 Convert.ToInt32(reader["OrderID"]);
 
-                            selectedWaiterId =
-                                Convert.ToInt32(reader["WaiterID"]);
+                            int orderWaiterId = Convert.ToInt32(reader["WaiterID"]);
+                            if (orderWaiterId != selectedWaiterId)
+                                return false;
                         }
                     }
 
@@ -4360,8 +4939,7 @@ namespace RestaurantPOS
 
                         if (selectedCategoryVisualPanel != null)
                         {
-                            selectedCategoryVisualPanel.BackColor =
-                                categorySelectedColor;
+                            selectedCategoryVisualPanel.BackColor = categoryColor;
 
                             if (selectedCategoryVisualPanel.Controls.Count > 0)
                             {
@@ -4369,7 +4947,7 @@ namespace RestaurantPOS
                                     selectedCategoryVisualPanel.Controls[0] as Label;
 
                                 if (firstLabel != null)
-                                    firstLabel.ForeColor = Color.White;
+                                    firstLabel.ForeColor = Color.Black;
                             }
                         }
 
@@ -4442,17 +5020,11 @@ namespace RestaurantPOS
             if (panel == null)
                 return;
 
-            if (panel != selectedCategoryVisualPanel)
+            if (panel.Controls.Count > 0)
             {
-                panel.BackColor = categoryHoverColor;
-
-                if (panel.Controls.Count > 0)
-                {
-                    Label label = panel.Controls[0] as Label;
-
-                    if (label != null)
-                        label.ForeColor = Color.White;
-                }
+                Label label = panel.Controls[0] as Label;
+                if (label != null)
+                    label.ForeColor = Color.Black;
             }
         }
 
@@ -4469,17 +5041,14 @@ namespace RestaurantPOS
             if (panel.ClientRectangle.Contains(panel.PointToClient(Cursor.Position)))
                 return;
 
-            if (panel != selectedCategoryVisualPanel)
+            panel.BackColor = categoryColor;
+            if (panel.Controls.Count > 0)
             {
-                panel.BackColor = categoryColor;
-
-                if (panel.Controls.Count > 0)
-                {
-                    Label label = panel.Controls[0] as Label;
-
-                    if (label != null)
-                        label.ForeColor = Color.Black;
-                }
+                Label label = panel.Controls[0] as Label;
+                if (label != null)
+                    label.ForeColor = panel == selectedCategoryVisualPanel
+                        ? Color.Black
+                        : GetCategoryIconColor(label.Text);
             }
         }
 
@@ -4500,29 +5069,31 @@ namespace RestaurantPOS
             if (selectedCategoryVisualPanel != null &&
                 selectedCategoryVisualPanel != panel)
             {
-                selectedCategoryVisualPanel.BackColor =
-                    categoryColor;
+                selectedCategoryVisualPanel.BackColor = categoryColor;
 
                 if (selectedCategoryVisualPanel.Controls.Count > 0)
                 {
-                    Label oldLabel =
-                        selectedCategoryVisualPanel.Controls[0] as Label;
-
+                    Label oldLabel = selectedCategoryVisualPanel.Controls[0] as Label;
                     if (oldLabel != null)
-                        oldLabel.ForeColor = Color.Black;
+                    {
+                        oldLabel.ForeColor = GetCategoryIconColor(oldLabel.Text);
+                        oldLabel.Font = new Font("Segoe UI Emoji", 11.5f, FontStyle.Bold);
+                    }
                 }
             }
 
-            // Kategoria aktive bëhet blu.
+            // Karta ruan ngjyrën e vet; vetëm teksti i kategorisë aktive bëhet i zi.
             selectedCategoryVisualPanel = panel;
-            panel.BackColor = categorySelectedColor;
+            panel.BackColor = categoryColor;
 
             if (panel.Controls.Count > 0)
             {
                 Label label = panel.Controls[0] as Label;
-
                 if (label != null)
-                    label.ForeColor = Color.White;
+                {
+                    label.ForeColor = Color.Black;
+                    label.Font = new Font("Segoe UI Emoji", 11.5f, FontStyle.Bold);
+                }
             }
 
             pnlKategorite.Visible = true;
@@ -4686,18 +5257,8 @@ namespace RestaurantPOS
             if (panel == null)
                 return;
 
-            panel.BackColor = productHoverColor;
-
-            foreach (Control control in panel.Controls)
-            {
-                Label label = control as Label;
-
-                if (label != null)
-                    label.ForeColor =
-                        label.Dock == DockStyle.Bottom
-                            ? priceColor
-                            : orderHeaderColor;
-            }
+            // Ngjyra e kartës së ushqimit mbetet e pandryshuar edhe gjatë hover-it.
+            panel.BackColor = productColor;
         }
 
 
@@ -4874,6 +5435,7 @@ namespace RestaurantPOS
                     con.Open();
                     string q = @"SELECT rt.TableID, rt.TableNumber FROM RestaurantTables rt
                                  WHERE rt.TableID <> @CurrentTable
+                                   AND rt.Status = 'Free'
                                    AND NOT EXISTS (SELECT 1 FROM Orders o WHERE o.TableID = rt.TableID AND o.Status = 'Open')
                                  ORDER BY rt.TableNumber";
                     using (SqlCommand cmd = new SqlCommand(q, con))
@@ -4897,24 +5459,111 @@ namespace RestaurantPOS
             }
 
             using (Form dialog = new Form())
-            using (ComboBox combo = new ComboBox())
-            using (Button ok = new Button())
+            using (FlowLayoutPanel cards = new FlowLayoutPanel())
             using (Button cancel = new Button())
             {
                 dialog.Text = "Transfero porosinë";
                 dialog.StartPosition = FormStartPosition.CenterParent;
                 dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
-                dialog.ClientSize = new Size(430, 190);
-                dialog.MinimizeBox = false; dialog.MaximizeBox = false;
-                Label label = new Label { Text = "Zgjidh tavolinën e re:", AutoSize = true, Location = new Point(18, 16), Font = new Font("Segoe UI", 12f, FontStyle.Bold) };
-                combo.DropDownStyle = ComboBoxStyle.DropDownList; combo.Location = new Point(18, 48); combo.Size = new Size(394, 38); combo.Font = new Font("Segoe UI", 14f, FontStyle.Bold); combo.IntegralHeight = false; combo.DropDownHeight = 240;
-                foreach (var t in tables) combo.Items.Add(new TableChoice(t.Key, t.Value));
-                combo.DisplayMember = "Display"; combo.SelectedIndex = 0;
-                ok.Text = "Transfero"; ok.DialogResult = DialogResult.OK; ok.Location = new Point(212, 112); ok.Size = new Size(96, 42); ok.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
-                cancel.Text = "Anulo"; cancel.DialogResult = DialogResult.Cancel; cancel.Location = new Point(316, 112); cancel.Size = new Size(96, 42); cancel.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
-                dialog.Controls.AddRange(new Control[] { label, combo, ok, cancel }); dialog.AcceptButton = ok; dialog.CancelButton = cancel;
-                if (dialog.ShowDialog(this) != DialogResult.OK || combo.SelectedItem == null) return;
-                int destinationTableId = ((TableChoice)combo.SelectedItem).Id;
+                dialog.ClientSize = new Size(520, 390);
+                dialog.MinimizeBox = false;
+                dialog.MaximizeBox = false;
+                dialog.BackColor = Color.FromArgb(241, 245, 249);
+
+                Label title = new Label
+                {
+                    Text = "ZGJIDH TAVOLINËN E RE",
+                    Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(23, 37, 84),
+                    TextAlign = ContentAlignment.MiddleLeft,
+                    Location = new Point(18, 12),
+                    Size = new Size(480, 34)
+                };
+                cards.Location = new Point(14, 54);
+                cards.Size = new Size(492, 270);
+                cards.AutoScroll = true;
+                cards.WrapContents = true;
+                cards.FlowDirection = FlowDirection.LeftToRight;
+                cards.BackColor = Color.White;
+                cards.Padding = new Padding(8);
+
+                int destinationTableId = 0;
+                string destinationNumber = "";
+
+                foreach (var table in tables)
+                {
+                    int id = table.Key;
+                    string number = table.Value;
+                    Panel card = new Panel
+                    {
+                        Width = 105,
+                        Height = 82,
+                        Margin = new Padding(7),
+                        BackColor = Color.FromArgb(219, 234, 254),
+                        Cursor = Cursors.Hand,
+                        Tag = id
+                    };
+                    MakePanelRounded(card, 14);
+                    Label cardText = new Label
+                    {
+                        Dock = DockStyle.Fill,
+                        Text = "🟢\nTAVOLINA " + number,
+                        TextAlign = ContentAlignment.MiddleCenter,
+                        Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                        ForeColor = Color.FromArgb(15, 23, 42),
+                        BackColor = Color.Transparent,
+                        Cursor = Cursors.Hand
+                    };
+                    card.Controls.Add(cardText);
+                    EventHandler choose = (s, args) =>
+                    {
+                        destinationTableId = id;
+                        destinationNumber = number;
+                        foreach (Control c in cards.Controls)
+                        {
+                            bool selected = Convert.ToInt32(c.Tag) == id;
+                            c.BackColor = selected
+                                ? Color.FromArgb(37, 99, 235)
+                                : Color.FromArgb(219, 234, 254);
+                            foreach (Control child in c.Controls)
+                                child.ForeColor = selected ? Color.White : Color.FromArgb(15, 23, 42);
+                        }
+                    };
+                    card.Click += choose;
+                    cardText.Click += choose;
+                    card.MouseEnter += (s, args) => { if (destinationTableId != id) card.BackColor = Color.FromArgb(191, 219, 254); };
+                    card.MouseLeave += (s, args) => { if (destinationTableId != id) card.BackColor = Color.FromArgb(219, 234, 254); };
+                    cards.Controls.Add(card);
+                }
+
+                Button ok = new Button
+                {
+                    Text = "TRANSFERO",
+                    Location = new Point(278, 337),
+                    Size = new Size(125, 38),
+                    BackColor = Color.FromArgb(37, 99, 235),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 10f, FontStyle.Bold),
+                    DialogResult = DialogResult.OK
+                };
+                ok.FlatAppearance.BorderSize = 0;
+                cancel.Text = "ANULO";
+                cancel.Location = new Point(414, 337);
+                cancel.Size = new Size(92, 38);
+                cancel.DialogResult = DialogResult.Cancel;
+                dialog.Controls.AddRange(new Control[] { title, cards, ok, cancel });
+                dialog.AcceptButton = ok;
+                dialog.CancelButton = cancel;
+
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                if (destinationTableId <= 0)
+                {
+                    MessageBox.Show("Zgjidh një tavolinë nga kartat.", "Transferimi",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
                 try
                 {
                     using (SqlConnection con = DbConnection.GetConnection())
@@ -4922,34 +5571,43 @@ namespace RestaurantPOS
                         con.Open();
                         using (SqlTransaction tx = con.BeginTransaction())
                         {
-                            using (SqlCommand check = new SqlCommand("SELECT COUNT(1) FROM Orders WHERE TableID=@id AND Status='Open'", con, tx))
+                            using (SqlCommand check = new SqlCommand(
+                                "SELECT COUNT(1) FROM Orders WITH (UPDLOCK, HOLDLOCK) WHERE TableID=@id AND Status='Open'", con, tx))
                             {
                                 check.Parameters.AddWithValue("@id", destinationTableId);
-                                if (Convert.ToInt32(check.ExecuteScalar()) > 0) throw new InvalidOperationException("Tavolina e zgjedhur tashmë ka porosi të hapur.");
+                                if (Convert.ToInt32(check.ExecuteScalar()) > 0)
+                                    throw new InvalidOperationException("Tavolina e zgjedhur tashmë ka porosi të hapur.");
                             }
-                            using (SqlCommand update = new SqlCommand("UPDATE Orders SET TableID=@newTable WHERE OrderID=@orderId AND TableID=@oldTable AND Status='Open'", con, tx))
+                            using (SqlCommand update = new SqlCommand(
+                                "UPDATE Orders SET TableID=@newTable WHERE OrderID=@orderId AND TableID=@oldTable AND Status='Open'", con, tx))
                             {
-                                update.Parameters.AddWithValue("@newTable", destinationTableId); update.Parameters.AddWithValue("@orderId", selectedOpenOrderId); update.Parameters.AddWithValue("@oldTable", selectedTableId);
-                                if (update.ExecuteNonQuery() != 1) throw new InvalidOperationException("Porosia nuk u transferua. Rifresko dhe provo përsëri.");
+                                update.Parameters.AddWithValue("@newTable", destinationTableId);
+                                update.Parameters.AddWithValue("@orderId", selectedOpenOrderId);
+                                update.Parameters.AddWithValue("@oldTable", selectedTableId);
+                                if (update.ExecuteNonQuery() != 1)
+                                    throw new InvalidOperationException("Porosia nuk u transferua. Rifresko dhe provo përsëri.");
                             }
-                            using (SqlCommand updateStatus = new SqlCommand("UPDATE RestaurantTables SET Status = CASE WHEN TableID=@newTable THEN 'Occupied' WHEN TableID=@oldTable THEN 'Free' ELSE Status END WHERE TableID IN (@newTable,@oldTable)", con, tx))
+                            using (SqlCommand updateStatus = new SqlCommand(
+                                "UPDATE RestaurantTables SET Status = CASE WHEN TableID=@newTable THEN 'Occupied' WHEN TableID=@oldTable THEN 'Free' ELSE Status END WHERE TableID IN (@newTable,@oldTable)", con, tx))
                             {
-                                updateStatus.Parameters.AddWithValue("@newTable", destinationTableId); updateStatus.Parameters.AddWithValue("@oldTable", selectedTableId); updateStatus.ExecuteNonQuery();
+                                updateStatus.Parameters.AddWithValue("@newTable", destinationTableId);
+                                updateStatus.Parameters.AddWithValue("@oldTable", selectedTableId);
+                                updateStatus.ExecuteNonQuery();
                             }
                             tx.Commit();
                         }
                     }
                     selectedTableId = destinationTableId;
                     UpdateOrderContextLabel();
-                    MessageBox.Show("Porosia u transferua me sukses te tavolina " +
-                        tables.Find(t => t.Key == destinationTableId).Value + ".",
+                    MessageBox.Show("Porosia u transferua me sukses te tavolina " + destinationNumber + ".",
                         "Transferimi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    // Qëndrojmë në ekranin e porosisë; OrderID mbetet i njëjtë.
-                    // Kur përdoruesi kthehet te tavolinat, statuset do të ringarkohen.
-                    if (lblOrderContext != null)
-                        lblOrderContext.BringToFront();
+                    if (lblOrderContext != null) lblOrderContext.BringToFront();
                 }
-                catch (Exception ex) { MessageBox.Show("Gabim gjatë transferimit:\n\n" + ex.Message, "Transferimi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Gabim gjatë transferimit:\n\n" + ex.Message,
+                        "Transferimi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 
@@ -4988,7 +5646,8 @@ namespace RestaurantPOS
                 lblTitulliPorosia.ForeColor = Color.White;
                 lblTitulliPorosia.BackColor = orderHeaderColor;
                 lblTitulliPorosia.TextAlign =
-                    ContentAlignment.MiddleCenter;
+                    ContentAlignment.MiddleLeft;
+                lblTitulliPorosia.Padding = new Padding(12, 0, 0, 0);
             }
 
             if (lblTekstiTotali != null)
@@ -5051,6 +5710,7 @@ namespace RestaurantPOS
             }
             EnsureTransferButton();
             EnsureCommentButton();
+            EnsureOrderCountLabel();
             // Paneli hapet vetëm kur përdoruesi hyn në ekranin e porosisë.
             pnlPorosia.Visible = false;
             pnlPorosia.BringToFront();
@@ -5063,6 +5723,26 @@ namespace RestaurantPOS
             EventArgs e)
         {
             ArrangeOrderPanel();
+        }
+
+
+        private void EnsureOrderCountLabel()
+        {
+            if (pnlPorosia == null) return;
+            if (lblOrderCount == null || lblOrderCount.IsDisposed)
+            {
+                lblOrderCount = new Label();
+                lblOrderCount.Name = "lblOrderCount";
+                lblOrderCount.AutoSize = false;
+                lblOrderCount.TextAlign = ContentAlignment.MiddleCenter;
+                lblOrderCount.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+                lblOrderCount.ForeColor = Color.White;
+                lblOrderCount.BackColor = Color.FromArgb(14, 116, 144);
+                lblOrderCount.Text = "0";
+                lblOrderCount.BorderStyle = BorderStyle.FixedSingle;
+                pnlPorosia.Controls.Add(lblOrderCount);
+            }
+            lblOrderCount.BringToFront();
         }
 
 
@@ -5156,6 +5836,14 @@ namespace RestaurantPOS
                 flowPorosia.SendToBack();
             }
 
+            // Numri i artikujve të porositur shfaqet mes titullit dhe butonave T/K.
+            if (lblOrderCount != null)
+            {
+                lblOrderCount.SetBounds(Math.Max(88, width - 126), 7, 34, 30);
+                lblOrderCount.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                lblOrderCount.BringToFront();
+            }
+
             // T = transferimi i tavolinës, K = komenti, pranë titullit POROSIA.
             if (btnTransferTable != null)
             {
@@ -5204,6 +5892,9 @@ namespace RestaurantPOS
                 lblTotali.Text =
                     total.ToString("0.00") + " den";
             }
+
+            if (lblOrderCount != null)
+                lblOrderCount.Text = currentOrder.Sum(i => i.Quantity).ToString();
         }
 
 
@@ -5213,9 +5904,9 @@ namespace RestaurantPOS
             bool hasComment = !string.IsNullOrWhiteSpace(item.Comment);
             Panel panel = new Panel();
             panel.Width = Math.Max(220, availableWidth - 14);
-            panel.Height = hasComment ? 62 : 44;
-            panel.Margin = new Padding(1, 2, 1, 2);
-            panel.Padding = new Padding(3);
+            panel.Height = hasComment ? 43 : 31;
+            panel.Margin = new Padding(1, 1, 1, 1);
+            panel.Padding = new Padding(2);
             panel.BackColor = selectedOrderItem == item ? Color.FromArgb(219, 234, 254) : Color.FromArgb(247, 249, 252);
             panel.Tag = item;
             panel.Cursor = Cursors.Hand;
@@ -5225,31 +5916,31 @@ namespace RestaurantPOS
             Label nameLabel = new Label
             {
                 Text = item.ProductName,
-                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
                 ForeColor = Color.Black,
                 AutoEllipsis = true,
-                Location = new Point(6, 3),
-                Size = new Size(Math.Max(75, width - 145), 18)
+                Location = new Point(5, 1),
+                Size = new Size(Math.Max(75, width - 138), 15)
             };
             Label priceLabel = new Label
             {
                 Text = item.UnitPrice.ToString("0.00", CultureInfo.GetCultureInfo("de-DE")) +
                 " den  ·  Σ " + item.Total.ToString("0.00", CultureInfo.GetCultureInfo("de-DE")),
-                Font = new Font("Segoe UI", 8f, FontStyle.Bold),
+                Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
                 ForeColor = priceColor,
                 AutoEllipsis = true,
-                Location = new Point(6, hasComment ? 42 : 22),
-                Size = new Size(Math.Max(75, width - 145), 17)
+                Location = new Point(5, hasComment ? 27 : 15),
+                Size = new Size(Math.Max(75, width - 138), 14)
             };
 
-            int controlsY = 10;
-            int plusX = width - 34, quantityX = plusX - 24, minusX = quantityX - 27;
+            int controlsY = 5;
+            int plusX = width - 31, quantityX = plusX - 21, minusX = quantityX - 23;
             Button minusButton = new Button
             {
                 Text = "−",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 Location = new Point(minusX, controlsY),
-                Size = new Size(24, 22),
+                Size = new Size(20, 18),
                 Tag = item,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(235, 238, 243),
@@ -5264,14 +5955,14 @@ namespace RestaurantPOS
                 ForeColor = Color.Black,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Location = new Point(quantityX, controlsY),
-                Size = new Size(23, 22)
+                Size = new Size(20, 18)
             };
             Button plusButton = new Button
             {
                 Text = "+",
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 Location = new Point(plusX, controlsY),
-                Size = new Size(24, 22),
+                Size = new Size(20, 18),
                 Tag = item,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = orderAccentColor,
@@ -5289,8 +5980,8 @@ namespace RestaurantPOS
                     Font = new Font("Segoe UI", 8f, FontStyle.Italic | FontStyle.Bold),
                     ForeColor = Color.FromArgb(180, 70, 20),
                     AutoEllipsis = true,
-                    Location = new Point(6, 22),
-                    Size = new Size(Math.Max(90, width - 18), 17)
+                    Location = new Point(5, 16),
+                    Size = new Size(Math.Max(90, width - 12), 13)
                 };
                 panel.Controls.Add(commentLabel);
                 commentLabel.Click += (s, e) => SelectOrderItem(item);
@@ -5654,6 +6345,37 @@ namespace RestaurantPOS
         }
 
 
+        private void ReturnToAmbientSelectionAfterOrderPrint()
+        {
+            currentOrder.Clear();
+            selectedOrderItem = null;
+            RefreshOrderDisplay();
+
+            selectedTableId = 0;
+            selectedOpenOrderId = 0;
+            selectedOrderCategoryId = 0;
+            selectedAmbientId = 0;
+            selectedAmbient = "";
+
+            pnlPorosia.Visible = false;
+            pnlUshqimet.Visible = false;
+            pnlKategorite.Visible = false;
+            pnlTavolinat.Visible = false;
+            pnlAmbienti.Visible = true;
+            pnlMain.Visible = false;
+            panel1.Visible = true;
+
+            if (lblOrderContext != null)
+            {
+                lblOrderContext.Text = "";
+                lblOrderContext.Visible = false;
+            }
+
+            LoadAmbients();
+            LayoutOrderScreen();
+        }
+
+
         private void btnShtypPorosine_Click(
             object sender,
             EventArgs e)
@@ -5877,31 +6599,8 @@ namespace RestaurantPOS
                                     MessageBoxIcon.Information
                                 );
 
-                                // Pastrojmë memorien dhe kthehemi te kamarierët.
-                                currentOrder.Clear();
-                                RefreshOrderDisplay();
-
-                                selectedTableId = 0;
-                                selectedOpenOrderId = 0;
-                                selectedOrderCategoryId = 0;
-
-                                pnlPorosia.Visible = false;
-                                pnlUshqimet.Visible = false;
-                                pnlKategorite.Visible = false;
-                                pnlTavolinat.Visible = false;
-                                pnlAmbienti.Visible = false;
-
-                                pnlMain.Visible = true;
-                                panel1.Visible = true;
-
-                                // Pastrojmë kontekstin e porosisë së kaluar.
-                                if (lblOrderContext != null)
-                                {
-                                    lblOrderContext.Text = "";
-                                    lblOrderContext.Visible = false;
-                                }
-
-                                LoadWaiters();
+                                // Kamarieri mbetet i kyçur; kthehemi te zgjedhja e ambientit.
+                                ReturnToAmbientSelectionAfterOrderPrint();
                             }
                             catch
                             {
@@ -5947,6 +6646,18 @@ namespace RestaurantPOS
                     {
                         try
                         {
+                            // Kontroll i dyte brenda transaksionit: parandalon dy kamarierë
+                            // të hapin njëkohësisht porosi në të njëjtën tavolinë.
+                            using (SqlCommand tableLock = new SqlCommand(@"
+                                SELECT COUNT(1)
+                                FROM Orders WITH (UPDLOCK, HOLDLOCK)
+                                WHERE TableID = @TableID AND Status = 'Open'", con, transaction))
+                            {
+                                tableLock.Parameters.AddWithValue("@TableID", selectedTableId);
+                                if (Convert.ToInt32(tableLock.ExecuteScalar()) > 0)
+                                    throw new InvalidOperationException("Tavolina sapo u zë nga një kamarier tjetër. Rifresko listën e tavolinave.");
+                            }
+
                             // =========================================
                             // 1. KRIJOJMË POROSINË
                             // =========================================
@@ -6138,33 +6849,8 @@ namespace RestaurantPOS
                                 MessageBoxIcon.Information
                             );
 
-                            // Kthehemi te kamarierët.
-                            // Porosia mbetet OPEN në DB.
-                            currentOrder.Clear();
-                            RefreshOrderDisplay();
-
-                            selectedTableId = 0;
-                            selectedOpenOrderId = 0;
-                            selectedOrderCategoryId = 0;
-
-                            pnlPorosia.Visible = false;
-                            pnlUshqimet.Visible = false;
-                            pnlKategorite.Visible = false;
-                            pnlTavolinat.Visible = false;
-                            pnlAmbienti.Visible = false;
-
-                            pnlMain.Visible = true;
-                            panel1.Visible = true;
-
-                            // Kur kthehemi te zgjedhja e kamarierit, mos shfaqim
-                            // kamarierin dhe tavolinën e porosisë së kaluar.
-                            if (lblOrderContext != null)
-                            {
-                                lblOrderContext.Text = "";
-                                lblOrderContext.Visible = false;
-                            }
-
-                            LoadWaiters();
+                            // Porosia mbetet OPEN; kamarieri mbetet i kyçur dhe kthehet te ambientet.
+                            ReturnToAmbientSelectionAfterOrderPrint();
                         }
                         catch
                         {
@@ -6175,7 +6861,8 @@ namespace RestaurantPOS
                 }
             }
             catch (Exception ex)
-            {s
+            {
+
                 MessageBox.Show(
                     "Gabim gjatë ruajtjes së porosisë:\n\n" +
                     ex.Message,
@@ -6209,9 +6896,9 @@ namespace RestaurantPOS
             var output = new List<byte>();
             output.AddRange(new byte[] { 0x1B, 0x40 });
             output.AddRange(new byte[] { 0x1B, 0x61, 0x01 }); // center
-            output.AddRange(GetLogoEscPosBytes(200));
-            // Titull me shkronja me te medha; telefoni vjen menjehere poshte.
-            output.AddRange(new byte[] { 0x1D, 0x21, 0x11 }); // double width + double height
+            output.AddRange(GetLogoEscPosBytes(240));
+            // Titull pak më i madh, me shkronja të theksuara dhe madhësi të moderuar.
+            output.AddRange(new byte[] { 0x1D, 0x21, 0x01 }); // double height, normal width
             output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
             output.AddRange(EscPosText("RESTAURANT MEROVA\n"));
             output.AddRange(new byte[] { 0x1D, 0x21, 0x00 }); // normal size
@@ -6223,17 +6910,28 @@ namespace RestaurantPOS
             output.AddRange(EscPosText("Kamarieri: " + CleanForPos(waiterName) + "\n"));
             output.AddRange(EscPosText("Data: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + "\n"));
             output.AddRange(EscPosText("------------------------------------------\n"));
-            output.AddRange(EscPosText("Artikulli       Sasia  Cmimi   Shuma\n"));
+            output.AddRange(EscPosText("Artikulli            Sasia Cmimi   Shuma\n"));
             output.AddRange(EscPosText("------------------------------------------\n"));
 
             foreach (OrderItem item in items)
             {
-                string name = CleanForPos(item.ProductName);
-                if (name.Length > 15) name = name.Substring(0, 15);
-                string qty = item.Quantity + "x";
-                string price = item.UnitPrice.ToString("0.00");
-                string lineTotal = (item.UnitPrice * item.Quantity).ToString("0.00");
-                output.AddRange(EscPosText(name.PadRight(16) + qty.PadLeft(5) + price.PadLeft(8) + lineTotal.PadLeft(9) + "\n"));
+                string name = CleanForPos(item.ProductName).Trim();
+                string qty = (item.Quantity + "x").PadLeft(4);
+                string price = item.UnitPrice.ToString("0.00").PadLeft(7);
+                string lineTotal = (item.UnitPrice * item.Quantity).ToString("0.00").PadLeft(8);
+
+                // Emri i plotë ruhet: emrat e gjatë kalojnë në rreshta shtesë.
+                const int articleWidth = 20;
+                string remaining = name;
+                while (remaining.Length > articleWidth)
+                {
+                    int breakAt = remaining.LastIndexOf(' ', articleWidth);
+                    if (breakAt <= 0) breakAt = articleWidth;
+                    output.AddRange(EscPosText(remaining.Substring(0, breakAt).TrimEnd() + "\n"));
+                    remaining = remaining.Substring(breakAt).TrimStart();
+                }
+
+                output.AddRange(EscPosText(remaining.PadRight(articleWidth) + qty + price + lineTotal + "\n"));
             }
 
             output.AddRange(EscPosText("------------------------------------------\n"));
@@ -6259,9 +6957,9 @@ namespace RestaurantPOS
             return left + new string(' ', Math.Max(1, width - left.Length - right.Length)) + right;
         }
 
-        private static Bitmap CreateTrimmedRestaurantLogo()
+        private static Bitmap CreateTrimmedRestaurantLogo(string logoPath)
         {
-            using (Bitmap source = new Bitmap(RestaurantLogoPath))
+            using (Bitmap source = new Bitmap(logoPath))
             {
                 int minX = source.Width, minY = source.Height, maxX = -1, maxY = -1;
                 for (int y = 0; y < source.Height; y++)
@@ -6293,8 +6991,11 @@ namespace RestaurantPOS
 
         private static byte[] GetLogoEscPosBytes(int targetWidth)
         {
-            if (!System.IO.File.Exists(RestaurantLogoPath)) return new byte[0];
-            using (Bitmap source = CreateTrimmedRestaurantLogo())
+            string logoPath = System.IO.File.Exists(RestaurantLogoPath)
+                ? RestaurantLogoPath
+                : RestaurantHeaderLogoPath;
+            if (!System.IO.File.Exists(logoPath)) return new byte[0];
+            using (Bitmap source = CreateTrimmedRestaurantLogo(logoPath))
             {
                 int width = Math.Max(8, targetWidth - targetWidth % 8);
                 int height = Math.Max(1, (int)Math.Round(source.Height * (width / (double)source.Width)));
@@ -6430,6 +7131,9 @@ namespace RestaurantPOS
                 total += item.Total;
             }
 
+            string paymentMethod = PromptForPaymentMethod();
+            if (paymentMethod == null) return;
+
             try
             {
                 using (SqlConnection con = DbConnection.GetConnection())
@@ -6460,6 +7164,10 @@ namespace RestaurantPOS
                                     "Llogaria nuk u printua."
                                 );
                             }
+
+                            // Ruajmë faturën e përfunduar për raportin ditor PARA fshirjes së porosisë.
+                            SaveCompletedSale(con, transaction, selectedOpenOrderId, selectedWaiterId,
+                                selectedTableId, total, paymentMethod);
 
                             // =========================================
                             // 2. FSHIJMË PRODUKTET E POROSISË
@@ -6535,27 +7243,9 @@ namespace RestaurantPOS
                             selectedTableId = 0;
                             selectedOrderCategoryId = 0;
 
-                            // =========================================
-                            // 6. KTHEHEMI TE KAMARIERËT
-                            // =========================================
-                            pnlPorosia.Visible = false;
-                            pnlUshqimet.Visible = false;
-                            pnlKategorite.Visible = false;
-                            pnlTavolinat.Visible = false;
-                            pnlAmbienti.Visible = false;
-
-                            pnlMain.Visible = true;
-                            panel1.Visible = true;
-
-                            // Kur kthehemi te zgjedhja e kamarierit, mos shfaqim
-                            // kamarierin dhe tavolinën e porosisë së kaluar.
-                            if (lblOrderContext != null)
-                            {
-                                lblOrderContext.Text = "";
-                                lblOrderContext.Visible = false;
-                            }
-
-                            LoadWaiters();
+                            // Pas mbylljes së llogarisë kamarieri mbetet i kyçur
+                            // dhe kthehet te zgjedhja e ambienteve.
+                            ReturnToAmbientSelectionAfterOrderPrint();
 
                             MessageBox.Show(
                                 "Llogaria u mbyll me sukses.\n\n" +
@@ -6665,6 +7355,34 @@ namespace RestaurantPOS
             object sender,
             PaintEventArgs e)
         {
+        }
+
+        private void RoundButton(Button btn, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+
+            int diameter = radius * 2;
+            Rectangle rect = new Rectangle(
+                0, 0, btn.Width, btn.Height);
+
+            path.AddArc(rect.X, rect.Y, diameter, diameter, 180, 90);
+            path.AddArc(rect.Right - diameter, rect.Y, diameter, diameter, 270, 90);
+            path.AddArc(rect.Right - diameter, rect.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+
+            btn.Region = new Region(path);
+        }
+
+        private void label14_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label4_Click(object sender, EventArgs e)
+        {
+
+
         }
     }
 }
