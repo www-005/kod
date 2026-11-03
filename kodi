@@ -1056,7 +1056,7 @@ namespace RestaurantPOS
 
             panel.Width = 232;
             panel.Height = 166;
-            panel.BackColor = Color.White;
+            panel.BackColor = normalColor;
             panel.Margin = new Padding(10);
             panel.Padding = new Padding(10);
             panel.Tag = waiterId;
@@ -1064,36 +1064,40 @@ namespace RestaurantPOS
 
             MakePanelRounded(panel, 25);
 
-            Label label = new Label();
+            // Logoja e kamarierit është më e madhe, ndërsa emri ruan madhësinë e vet.
+            Label iconLabel = new Label();
+            iconLabel.Text = "♟";
+            iconLabel.Dock = DockStyle.Top;
+            iconLabel.Height = 88;
+            iconLabel.TextAlign = ContentAlignment.BottomCenter;
+            iconLabel.Font = new Font("Segoe UI Symbol", 42, FontStyle.Bold);
+            iconLabel.ForeColor = Color.Black;
+            iconLabel.BackColor = Color.Transparent;
+            iconLabel.Enabled = true;
 
-            label.Text = "♟\n" + (waiterName ?? "").ToUpperInvariant();
-            label.Dock = DockStyle.Fill;
-            label.TextAlign = ContentAlignment.MiddleCenter;
+            Label nameLabel = new Label();
+            nameLabel.Text = (waiterName ?? "").ToUpperInvariant();
+            nameLabel.Dock = DockStyle.Fill;
+            nameLabel.TextAlign = ContentAlignment.TopCenter;
+            nameLabel.Font = new Font("Segoe UI", 17, FontStyle.Bold);
+            nameLabel.ForeColor = Color.Black;
+            nameLabel.BackColor = Color.Transparent;
+            nameLabel.Enabled = true;
 
-            label.Font =
-                new Font(
-                    "Segoe UI",
-                    17,
-                    FontStyle.Bold
-                );
-
-            label.ForeColor = Color.Black;
-
-            label.BackColor = Color.Transparent;
-
-            // E bëjmë jo-aktiv që klikimi të shkojë te Paneli
-            label.Enabled = true;
-
-            panel.Controls.Add(label);
+            panel.Controls.Add(nameLabel);
+            panel.Controls.Add(iconLabel);
 
             panel.MouseEnter += WaiterPanel_MouseEnter;
             panel.MouseLeave += WaiterPanel_MouseLeave;
             panel.Click += WaiterPanel_Click;
 
-            // Etiketa mbetet aktive që teksti të mos shfaqet gri.
-            label.MouseEnter += (s, e) => WaiterPanel_MouseEnter(panel, e);
-            label.MouseLeave += (s, e) => WaiterPanel_MouseLeave(panel, e);
-            label.Click += (s, e) => WaiterPanel_Click(panel, e);
+            // Të dyja etiketat ruajnë klikimin dhe efektin e ngjyrave.
+            iconLabel.MouseEnter += (s, e) => WaiterPanel_MouseEnter(panel, e);
+            iconLabel.MouseLeave += (s, e) => WaiterPanel_MouseLeave(panel, e);
+            iconLabel.Click += (s, e) => WaiterPanel_Click(panel, e);
+            nameLabel.MouseEnter += (s, e) => WaiterPanel_MouseEnter(panel, e);
+            nameLabel.MouseLeave += (s, e) => WaiterPanel_MouseLeave(panel, e);
+            nameLabel.Click += (s, e) => WaiterPanel_Click(panel, e);
 
             return panel;
         }
@@ -1107,21 +1111,13 @@ namespace RestaurantPOS
             EventArgs e)
         {
             Panel panel = sender as Panel;
+            if (panel == null) return;
 
-            if (panel != null)
+            panel.BackColor = hoverColor;
+            foreach (Control control in panel.Controls)
             {
-                panel.BackColor = hoverColor;
-
-                if (panel.Controls.Count > 0)
-                {
-                    Label label =
-                        panel.Controls[0] as Label;
-
-                    if (label != null)
-                    {
-                        label.ForeColor = Color.White;
-                    }
-                }
+                Label label = control as Label;
+                if (label != null) label.ForeColor = Color.White;
             }
         }
 
@@ -1134,24 +1130,16 @@ namespace RestaurantPOS
             EventArgs e)
         {
             Panel panel = sender as Panel;
+            if (panel == null) return;
 
-            if (panel != null)
+            if (panel.ClientRectangle.Contains(panel.PointToClient(Cursor.Position)))
+                return;
+
+            panel.BackColor = normalColor;
+            foreach (Control control in panel.Controls)
             {
-                if (panel.ClientRectangle.Contains(panel.PointToClient(Cursor.Position)))
-                    return;
-
-                panel.BackColor = normalColor;
-
-                if (panel.Controls.Count > 0)
-                {
-                    Label label =
-                        panel.Controls[0] as Label;
-
-                    if (label != null)
-                    {
-                        label.ForeColor = Color.Black;
-                    }
-                }
+                Label label = control as Label;
+                if (label != null) label.ForeColor = Color.Black;
             }
         }
 
@@ -6896,11 +6884,13 @@ namespace RestaurantPOS
             var output = new List<byte>();
             output.AddRange(new byte[] { 0x1B, 0x40 });
             output.AddRange(new byte[] { 0x1B, 0x61, 0x01 }); // center
-            output.AddRange(GetLogoEscPosBytes(240));
-            // Titull pak më i madh, me shkronja të theksuara dhe madhësi të moderuar.
-            output.AddRange(new byte[] { 0x1D, 0x21, 0x01 }); // double height, normal width
+            output.AddRange(GetLogoEscPosBytes(200));
+            // Titull me shkronja me te medha; telefoni vjen menjehere poshte.
+            output.AddRange(new byte[] { 0x1D, 0x21, 0x10 }); // double width, normal height
             output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
+            output.AddRange(new byte[] { 0x1B, 0x4D, 0x01 }); // font B për emrin e restaurantit
             output.AddRange(EscPosText("RESTAURANT MEROVA\n"));
+            output.AddRange(new byte[] { 0x1B, 0x4D, 0x00 }); // rikthe fontin standard
             output.AddRange(new byte[] { 0x1D, 0x21, 0x00 }); // normal size
             output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
             output.AddRange(EscPosText("Tel: 072 631 013\n"));
@@ -6910,28 +6900,17 @@ namespace RestaurantPOS
             output.AddRange(EscPosText("Kamarieri: " + CleanForPos(waiterName) + "\n"));
             output.AddRange(EscPosText("Data: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm") + "\n"));
             output.AddRange(EscPosText("------------------------------------------\n"));
-            output.AddRange(EscPosText("Artikulli            Sasia Cmimi   Shuma\n"));
+            output.AddRange(EscPosText("Artikulli       Sasia  Cmimi   Shuma\n"));
             output.AddRange(EscPosText("------------------------------------------\n"));
 
             foreach (OrderItem item in items)
             {
-                string name = CleanForPos(item.ProductName).Trim();
-                string qty = (item.Quantity + "x").PadLeft(4);
-                string price = item.UnitPrice.ToString("0.00").PadLeft(7);
-                string lineTotal = (item.UnitPrice * item.Quantity).ToString("0.00").PadLeft(8);
-
-                // Emri i plotë ruhet: emrat e gjatë kalojnë në rreshta shtesë.
-                const int articleWidth = 20;
-                string remaining = name;
-                while (remaining.Length > articleWidth)
-                {
-                    int breakAt = remaining.LastIndexOf(' ', articleWidth);
-                    if (breakAt <= 0) breakAt = articleWidth;
-                    output.AddRange(EscPosText(remaining.Substring(0, breakAt).TrimEnd() + "\n"));
-                    remaining = remaining.Substring(breakAt).TrimStart();
-                }
-
-                output.AddRange(EscPosText(remaining.PadRight(articleWidth) + qty + price + lineTotal + "\n"));
+                string name = CleanForPos(item.ProductName);
+                if (name.Length > 15) name = name.Substring(0, 15);
+                string qty = item.Quantity + "x";
+                string price = item.UnitPrice.ToString("0.00");
+                string lineTotal = (item.UnitPrice * item.Quantity).ToString("0.00");
+                output.AddRange(EscPosText(name.PadRight(16) + qty.PadLeft(5) + price.PadLeft(8) + lineTotal.PadLeft(9) + "\n"));
             }
 
             output.AddRange(EscPosText("------------------------------------------\n"));
