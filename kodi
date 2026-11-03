@@ -1054,50 +1054,46 @@ namespace RestaurantPOS
         {
             Panel panel = new Panel();
 
-            panel.Width = 232;
-            panel.Height = 166;
-            panel.BackColor = normalColor;
-            panel.Margin = new Padding(10);
-            panel.Padding = new Padding(10);
+            panel.Width = 220;
+            panel.Height = 160;
+            panel.BackColor = Color.FromArgb(219, 234, 254);
+            panel.Margin = new Padding(9);
+            panel.Padding = new Padding(8);
             panel.Tag = waiterId;
             panel.Cursor = Cursors.Hand;
 
             MakePanelRounded(panel, 25);
 
-            // Logoja e kamarierit është më e madhe, ndërsa emri ruan madhësinë e vet.
-            Label iconLabel = new Label();
-            iconLabel.Text = "♟";
-            iconLabel.Dock = DockStyle.Top;
-            iconLabel.Height = 88;
-            iconLabel.TextAlign = ContentAlignment.BottomCenter;
-            iconLabel.Font = new Font("Segoe UI Symbol", 42, FontStyle.Bold);
-            iconLabel.ForeColor = Color.Black;
-            iconLabel.BackColor = Color.Transparent;
-            iconLabel.Enabled = true;
+            Label label = new Label();
 
-            Label nameLabel = new Label();
-            nameLabel.Text = (waiterName ?? "").ToUpperInvariant();
-            nameLabel.Dock = DockStyle.Fill;
-            nameLabel.TextAlign = ContentAlignment.TopCenter;
-            nameLabel.Font = new Font("Segoe UI", 17, FontStyle.Bold);
-            nameLabel.ForeColor = Color.Black;
-            nameLabel.BackColor = Color.Transparent;
-            nameLabel.Enabled = true;
+            label.Text = "●\n" + (waiterName ?? "").ToUpperInvariant();
+            label.Dock = DockStyle.Fill;
+            label.TextAlign = ContentAlignment.MiddleCenter;
 
-            panel.Controls.Add(nameLabel);
-            panel.Controls.Add(iconLabel);
+            label.Font =
+                new Font(
+                    "Segoe UI",
+                    17,
+                    FontStyle.Bold
+                );
+
+            label.ForeColor = Color.Black;
+
+            label.BackColor = Color.Transparent;
+
+            // E bëjmë jo-aktiv që klikimi të shkojë te Paneli
+            label.Enabled = true;
+
+            panel.Controls.Add(label);
 
             panel.MouseEnter += WaiterPanel_MouseEnter;
             panel.MouseLeave += WaiterPanel_MouseLeave;
             panel.Click += WaiterPanel_Click;
 
-            // Të dyja etiketat ruajnë klikimin dhe efektin e ngjyrave.
-            iconLabel.MouseEnter += (s, e) => WaiterPanel_MouseEnter(panel, e);
-            iconLabel.MouseLeave += (s, e) => WaiterPanel_MouseLeave(panel, e);
-            iconLabel.Click += (s, e) => WaiterPanel_Click(panel, e);
-            nameLabel.MouseEnter += (s, e) => WaiterPanel_MouseEnter(panel, e);
-            nameLabel.MouseLeave += (s, e) => WaiterPanel_MouseLeave(panel, e);
-            nameLabel.Click += (s, e) => WaiterPanel_Click(panel, e);
+            // Etiketa mbetet aktive që teksti të mos shfaqet gri.
+            label.MouseEnter += (s, e) => WaiterPanel_MouseEnter(panel, e);
+            label.MouseLeave += (s, e) => WaiterPanel_MouseLeave(panel, e);
+            label.Click += (s, e) => WaiterPanel_Click(panel, e);
 
             return panel;
         }
@@ -1319,7 +1315,7 @@ namespace RestaurantPOS
             panel.Padding = new Padding(10);
 
             // Pamje e pastër, me kontrast dhe hapësirë më të mirë.
-            panel.BackColor = Color.White;
+            panel.BackColor = Color.FromArgb(219, 234, 254);
             panel.Margin = new Padding(10);
 
             // Ruajmë ID-në e ambientit
@@ -1429,7 +1425,7 @@ namespace RestaurantPOS
                     return;
 
                 panel.BackColor =
-                    normalColor;
+                    Color.FromArgb(219, 234, 254);
 
                 if (panel.Controls.Count > 0)
                 {
@@ -4347,8 +4343,8 @@ namespace RestaurantPOS
             );
 
             panel.BackColor = occupied
-                ? Color.FromArgb(190, 55, 62)
-                : Color.White;
+                ? Color.FromArgb(190, 35, 45)
+                : Color.FromArgb(226, 234, 246);
 
             // Statusi ruhet këtu që hover/click ta dinë gjendjen.
             panel.AccessibleName = status;
@@ -4436,8 +4432,8 @@ namespace RestaurantPOS
             );
 
             panel.BackColor = occupied
-                ? Color.FromArgb(190, 55, 62)
-                : Color.White;
+                ? Color.FromArgb(190, 35, 45)
+                : Color.FromArgb(226, 234, 246);
 
             if (panel.Controls.Count > 0)
             {
