@@ -3925,38 +3925,62 @@ namespace RestaurantPOS
 
         private void btnRaportiDitor_Click(object sender, EventArgs e)
         {
-            DateTime month = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            // Zgjedhja e llojit të raportit: ditor ose mujor.
+            bool monthly = false;
+            DateTime selectedDate = DateTime.Today;
+
             using (Form pick = new Form())
+            using (ComboBox mode = new ComboBox())
             using (DateTimePicker date = new DateTimePicker())
             using (Button show = new Button())
             using (Button cancel = new Button())
             {
-                pick.Text = "Zgjidh muajin e raportit";
+                pick.Text = "Zgjidh llojin e raportit";
                 pick.FormBorderStyle = FormBorderStyle.FixedDialog;
                 pick.StartPosition = FormStartPosition.CenterParent;
-                pick.ClientSize = new Size(360, 135);
+                pick.ClientSize = new Size(390, 175);
                 pick.MaximizeBox = false;
                 pick.MinimizeBox = false;
+                pick.BackColor = Color.FromArgb(241, 245, 249);
 
-                Label label = new Label
+                Label modeLabel = new Label
                 {
-                    Text = "Muaji i raportit:",
-                    Location = new Point(12, 10),
-                    Size = new Size(320, 22)
+                    Text = "Lloji i raportit:",
+                    Location = new Point(14, 12),
+                    Size = new Size(350, 22),
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold)
+                };
+                mode.DropDownStyle = ComboBoxStyle.DropDownList;
+                mode.Items.AddRange(new object[] { "Raporti ditor", "Raporti mujor" });
+                mode.SelectedIndex = 0;
+                mode.SetBounds(14, 38, 350, 30);
+
+                Label dateLabel = new Label
+                {
+                    Text = "Zgjidh datën:",
+                    Location = new Point(14, 76),
+                    Size = new Size(350, 22)
                 };
                 date.Format = DateTimePickerFormat.Custom;
-                date.CustomFormat = "MMMM yyyy";
-                date.ShowUpDown = true;
-                date.Value = month;
-                date.SetBounds(12, 37, 190, 30);
+                date.CustomFormat = "dd.MM.yyyy";
+                date.SetBounds(14, 100, 190, 30);
+
+                mode.SelectedIndexChanged += (s, args) =>
+                {
+                    bool isMonth = mode.SelectedIndex == 1;
+                    date.CustomFormat = isMonth ? "MMMM yyyy" : "dd.MM.yyyy";
+                    date.ShowUpDown = isMonth;
+                    dateLabel.Text = isMonth ? "Zgjidh muajin:" : "Zgjidh datën:";
+                };
 
                 show.Text = "SHFAQ RAPORTIN";
-                show.SetBounds(12, 82, 190, 38);
+                show.SetBounds(14, 137, 190, 30);
                 cancel.Text = "ANULO";
-                cancel.SetBounds(218, 82, 125, 38);
+                cancel.SetBounds(235, 137, 129, 30);
                 show.Click += (s, args) =>
                 {
-                    month = new DateTime(date.Value.Year, date.Value.Month, 1);
+                    monthly = mode.SelectedIndex == 1;
+                    selectedDate = date.Value.Date;
                     pick.DialogResult = DialogResult.OK;
                     pick.Close();
                 };
@@ -3965,38 +3989,40 @@ namespace RestaurantPOS
                     pick.DialogResult = DialogResult.Cancel;
                     pick.Close();
                 };
-                pick.Controls.AddRange(new Control[] { label, date, show, cancel });
+
+                pick.Controls.AddRange(new Control[] { modeLabel, mode, dateLabel, date, show, cancel });
                 pick.AcceptButton = show;
                 pick.CancelButton = cancel;
                 if (pick.ShowDialog(this) != DialogResult.OK) return;
             }
 
+            DateTime startDate = monthly
+                ? new DateTime(selectedDate.Year, selectedDate.Month, 1)
+                : selectedDate.Date;
+            DateTime endDate = monthly ? startDate.AddMonths(1) : startDate.AddDays(1);
+            string reportType = monthly ? "RAPORTI MUJOR" : "RAPORTI DITOR";
+            string periodText = monthly
+                ? startDate.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("sq-AL"))
+                : startDate.ToString("dd.MM.yyyy");
+
             try
             {
-                DateTime end = month.AddMonths(1);
-                int count = 0;
-                decimal total = 0m;
+                int billCount = 0;
                 DataTable itemData = new DataTable();
                 DataTable waiterData = new DataTable();
 
                 using (SqlConnection con = DbConnection.GetConnection())
                 {
                     con.Open();
+
                     using (SqlCommand cmd = new SqlCommand(@"
-                        SELECT COUNT(*), COALESCE(SUM(Total), 0)
+                        SELECT COUNT(*)
                         FROM dbo.Sales
                         WHERE SaleDate >= @Start AND SaleDate < @End", con))
                     {
-                        cmd.Parameters.Add("@Start", SqlDbType.DateTime2).Value = month;
-                        cmd.Parameters.Add("@End", SqlDbType.DateTime2).Value = end;
-                        using (SqlDataReader rd = cmd.ExecuteReader())
-                        {
-                            if (rd.Read())
-                            {
-                                count = Convert.ToInt32(rd[0]);
-                                total = Convert.ToDecimal(rd[1]);
-                            }
-                        }
+                        cmd.Parameters.Add("@Start", SqlDbType.DateTime2).Value = startDate;
+                        cmd.Parameters.Add("@End", SqlDbType.DateTime2).Value = endDate;
+                        billCount = Convert.ToInt32(cmd.ExecuteScalar());
                     }
 
                     using (SqlDataAdapter da = new SqlDataAdapter(@"
@@ -4013,8 +4039,8 @@ namespace RestaurantPOS
                         GROUP BY s.WaiterID, k.Name, si.ProductName
                         ORDER BY Kamarieri, Produkti", con))
                     {
-                        da.SelectCommand.Parameters.Add("@Start", SqlDbType.DateTime2).Value = month;
-                        da.SelectCommand.Parameters.Add("@End", SqlDbType.DateTime2).Value = end;
+                        da.SelectCommand.Parameters.Add("@Start", SqlDbType.DateTime2).Value = startDate;
+                        da.SelectCommand.Parameters.Add("@End", SqlDbType.DateTime2).Value = endDate;
                         da.Fill(itemData);
                     }
 
@@ -4030,11 +4056,14 @@ namespace RestaurantPOS
                         GROUP BY s.WaiterID, k.Name
                         ORDER BY Kamarieri", con))
                     {
-                        da.SelectCommand.Parameters.Add("@Start", SqlDbType.DateTime2).Value = month;
-                        da.SelectCommand.Parameters.Add("@End", SqlDbType.DateTime2).Value = end;
+                        da.SelectCommand.Parameters.Add("@Start", SqlDbType.DateTime2).Value = startDate;
+                        da.SelectCommand.Parameters.Add("@End", SqlDbType.DateTime2).Value = endDate;
                         da.Fill(waiterData);
                     }
                 }
+
+                decimal reportTotal = waiterData.Rows.Cast<DataRow>()
+                    .Sum(r => r["Shitje"] == DBNull.Value ? 0m : Convert.ToDecimal(r["Shitje"]));
 
                 using (Form report = new Form())
                 using (Label summary = new Label())
@@ -4046,19 +4075,18 @@ namespace RestaurantPOS
                 using (Button removeItem = new Button())
                 using (Button close = new Button())
                 {
-                    report.Text = "Raporti mujor - " + month.ToString("MMMM yyyy");
+                    report.Text = reportType + " - " + periodText;
                     report.StartPosition = FormStartPosition.CenterParent;
                     report.Size = new Size(900, 720);
                     report.MinimumSize = new Size(760, 600);
                     report.BackColor = Color.FromArgb(241, 245, 249);
 
-                    summary.Text = "MUAJI: " + month.ToString("MMMM yyyy") +
-                        "     FATURA: " + count +
-                        "     TOTALI MUJOR: " + total.ToString("N2") + " DEN";
                     summary.Font = new Font("Segoe UI", 12, FontStyle.Bold);
                     summary.SetBounds(12, 12, 850, 35);
 
-                    waiterTitle.Text = "Totali mujor sipas kamarierit";
+                    waiterTitle.Text = monthly
+                        ? "Totali mujor sipas kamarierit"
+                        : "Totali ditor sipas kamarierit";
                     waiterTitle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
                     waiterTitle.SetBounds(12, 52, 850, 22);
 
@@ -4068,6 +4096,7 @@ namespace RestaurantPOS
                     waiterGrid.AllowUserToDeleteRows = false;
                     waiterGrid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
                     waiterGrid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                    waiterGrid.MultiSelect = false;
                     waiterGrid.RowHeadersVisible = false;
                     waiterGrid.DataSource = waiterData;
                     if (waiterGrid.Columns["WaiterID"] != null) waiterGrid.Columns["WaiterID"].Visible = false;
@@ -4079,7 +4108,9 @@ namespace RestaurantPOS
                         waiterGrid.Columns["Shitje"].DefaultCellStyle.Format = "N2";
                     }
 
-                    detailTitle.Text = "Ushqimet e shitura për çdo kamarier gjatë muajit";
+                    detailTitle.Text = monthly
+                        ? "Ushqimet e shitura për çdo kamarier gjatë muajit"
+                        : "Ushqimet e shitura për çdo kamarier gjatë ditës";
                     detailTitle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
                     detailTitle.SetBounds(12, 275, 850, 22);
 
@@ -4095,16 +4126,34 @@ namespace RestaurantPOS
                     if (itemGrid.Columns["WaiterID"] != null) itemGrid.Columns["WaiterID"].Visible = false;
                     if (itemGrid.Columns["Kamarieri"] != null) itemGrid.Columns["Kamarieri"].HeaderText = "Kamarieri";
                     if (itemGrid.Columns["Produkti"] != null) itemGrid.Columns["Produkti"].HeaderText = "Produkti";
-                    if (itemGrid.Columns["Sasia"] != null) itemGrid.Columns["Sasia"].HeaderText = "Sasia mujore";
+                    if (itemGrid.Columns["Sasia"] != null) itemGrid.Columns["Sasia"].HeaderText = "Sasia";
                     if (itemGrid.Columns["Shitja"] != null)
                     {
                         itemGrid.Columns["Shitja"].HeaderText = "Shitja (DEN)";
                         itemGrid.Columns["Shitja"].DefaultCellStyle.Format = "N2";
                     }
 
+                    Action refreshReportTotals = () =>
+                    {
+                        foreach (DataRow waiter in waiterData.Rows)
+                        {
+                            int id = Convert.ToInt32(waiter["WaiterID"]);
+                            decimal sum = itemData.AsEnumerable()
+                                .Where(r => Convert.ToInt32(r["WaiterID"]) == id)
+                                .Sum(r => Convert.ToDecimal(r["Shitja"]));
+                            waiter["Shitje"] = sum;
+                        }
+                        reportTotal = waiterData.AsEnumerable()
+                            .Sum(r => Convert.ToDecimal(r["Shitje"]));
+                        summary.Text = (monthly ? "MUAJI: " : "DATA: ") + periodText +
+                            "     FATURA: " + billCount +
+                            "     TOTALI: " + reportTotal.ToString("N2") + " DEN";
+                    };
+                    refreshReportTotals();
+
                     print.Text = "PRINT RAPORTIN (POS 80mm)";
                     print.SetBounds(12, 630, 260, 38);
-                    removeItem.Text = "FSHI USHQIMIN E ZGJEDHUR";
+                    removeItem.Text = "FSHI SASI NGA USHQIMI I ZGJEDHUR";
                     removeItem.SetBounds(290, 630, 300, 38);
                     removeItem.BackColor = Color.FromArgb(220, 75, 75);
                     removeItem.ForeColor = Color.White;
@@ -4115,16 +4164,75 @@ namespace RestaurantPOS
                         if (itemGrid.SelectedRows.Count == 0)
                         {
                             MessageBox.Show("Së pari selekto ushqimin që dëshiron ta largosh.",
-                                "Raporti mujor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                                reportType, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                             return;
                         }
-                        DialogResult answer = MessageBox.Show(
-                            "A dëshiron ta largosh ushqimin e zgjedhur nga raporti dhe printimi?\n\n" +
-                            "Ky veprim nuk e fshin shitjen nga databaza.",
-                            "Konfirmo largimin", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                        if (answer != DialogResult.Yes) return;
-                        DataRowView selectedRow = itemGrid.SelectedRows[0].DataBoundItem as DataRowView;
-                        if (selectedRow != null) itemData.Rows.Remove(selectedRow.Row);
+
+                        DataRowView selected = itemGrid.SelectedRows[0].DataBoundItem as DataRowView;
+                        if (selected == null) return;
+                        DataRow row = selected.Row;
+                        int available = Convert.ToInt32(row["Sasia"]);
+                        int quantityToRemove = 1;
+
+                        if (available > 1)
+                        {
+                            using (Form quantityForm = new Form())
+                            using (NumericUpDown quantity = new NumericUpDown())
+                            using (Button ok = new Button())
+                            using (Button cancelQuantity = new Button())
+                            {
+                                quantityForm.Text = "Zgjidh sasinë për largim";
+                                quantityForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                                quantityForm.StartPosition = FormStartPosition.CenterParent;
+                                quantityForm.ClientSize = new Size(310, 135);
+                                quantityForm.MaximizeBox = false;
+                                quantityForm.MinimizeBox = false;
+                                Label prompt = new Label
+                                {
+                                    Text = "Sa copë dëshiron të largosh? (1-" + available + ")",
+                                    Location = new Point(12, 12),
+                                    Size = new Size(285, 25)
+                                };
+                                quantity.Minimum = 1;
+                                quantity.Maximum = available;
+                                quantity.Value = 1;
+                                quantity.SetBounds(14, 43, 280, 28);
+                                ok.Text = "VAZHDO";
+                                ok.SetBounds(14, 87, 125, 34);
+                                cancelQuantity.Text = "ANULO";
+                                cancelQuantity.SetBounds(169, 87, 125, 34);
+                                ok.Click += (ss, ee) =>
+                                {
+                                    quantityToRemove = Decimal.ToInt32(quantity.Value);
+                                    quantityForm.DialogResult = DialogResult.OK;
+                                    quantityForm.Close();
+                                };
+                                cancelQuantity.Click += (ss, ee) =>
+                                {
+                                    quantityForm.DialogResult = DialogResult.Cancel;
+                                    quantityForm.Close();
+                                };
+                                quantityForm.Controls.AddRange(new Control[] { prompt, quantity, ok, cancelQuantity });
+                                if (quantityForm.ShowDialog(report) != DialogResult.OK) return;
+                            }
+                        }
+                        // Kur sasia është 1, largohet menjëherë pa pyetje shtesë.
+
+                        int oldQuantity = Convert.ToInt32(row["Sasia"]);
+                        decimal oldAmount = Convert.ToDecimal(row["Shitja"]);
+                        decimal unitAmount = oldQuantity > 0 ? oldAmount / oldQuantity : 0m;
+                        int newQuantity = oldQuantity - quantityToRemove;
+                        decimal newAmount = oldAmount - (unitAmount * quantityToRemove);
+
+                        if (newQuantity <= 0)
+                            itemData.Rows.Remove(row);
+                        else
+                        {
+                            row["Sasia"] = newQuantity;
+                            row["Shitja"] = newAmount;
+                        }
+
+                        refreshReportTotals();
                     };
 
                     close.Text = "MBYLL";
@@ -4133,9 +4241,10 @@ namespace RestaurantPOS
                     {
                         try
                         {
-                            PrintMonthlyReport80mm(month, count, total, waiterData, itemData);
-                            MessageBox.Show("Raporti mujor u dërgua te printeri POS.",
-                                "Raporti mujor", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            PrintSalesReport80mm(reportType, periodText, billCount,
+                                reportTotal, waiterData, itemData);
+                            MessageBox.Show("Raporti u dërgua te printeri POS.",
+                                reportType, MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         catch (Exception ex)
                         {
@@ -4152,13 +4261,14 @@ namespace RestaurantPOS
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gabim gjatë krijimit të raportit mujor:\n" + ex.Message,
-                    "Raporti mujor", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Gabim gjatë krijimit të raportit:\n" + ex.Message,
+                    "Raporti", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void PrintMonthlyReport80mm(
-            DateTime month,
+        private void PrintSalesReport80mm(
+            string reportType,
+            string periodText,
             int billCount,
             decimal grandTotal,
             DataTable waiterData,
@@ -4171,13 +4281,13 @@ namespace RestaurantPOS
             output.AddRange(GetLogoEscPosBytes(200));
             output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
             output.AddRange(EscPosText("RESTAURANT MEROVA\n"));
-            output.AddRange(EscPosText("RAPORTI MUJOR\n"));
+            output.AddRange(EscPosText(reportType + "\n"));
             output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
-            output.AddRange(EscPosText(month.ToString("MMMM yyyy") + "\n"));
+            output.AddRange(EscPosText(periodText + "\n"));
             output.AddRange(new byte[] { 0x1B, 0x61, 0x00 });
             output.AddRange(EscPosText(new string('-', ticketWidth) + "\n"));
             output.AddRange(EscPosText("Fatura te mbyllura: " + billCount + "\n"));
-            output.AddRange(EscPosText("TOTALI MUJOR: " + grandTotal.ToString("0.00") + " DEN\n"));
+            output.AddRange(EscPosText("TOTALI: " + grandTotal.ToString("0.00") + " DEN\n"));
             output.AddRange(EscPosText(new string('-', ticketWidth) + "\n\n"));
 
             foreach (DataRow waiter in waiterData.Rows)
@@ -4201,16 +4311,11 @@ namespace RestaurantPOS
                     string amountText = productTotal.ToString("0.00");
                     int nameWidth = Math.Max(8, ticketWidth - qtyText.Length - amountText.Length - 2);
                     if (product.Length > nameWidth) product = product.Substring(0, nameWidth);
-                    string line = product.PadRight(nameWidth) + " " + qtyText + " " + amountText;
-                    if (line.Length > ticketWidth) line = line.Substring(0, ticketWidth);
-                    output.AddRange(EscPosText(line + "\n"));
+                    output.AddRange(EscPosText(product.PadRight(nameWidth) + " " + qtyText + " " + amountText + "\n"));
                 }
 
-                string waiterLine = "TOTALI " + waiterName;
-                if (waiterLine.Length > ticketWidth - 10)
-                    waiterLine = waiterLine.Substring(0, ticketWidth - 10);
                 output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
-                output.AddRange(EscPosText(waiterLine + "\n"));
+                output.AddRange(EscPosText("TOTALI " + waiterName + "\n"));
                 output.AddRange(EscPosText(waiterTotal.ToString("0.00") + " DEN\n"));
                 output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
                 output.AddRange(EscPosText(new string('-', ticketWidth) + "\n\n"));
@@ -4220,7 +4325,7 @@ namespace RestaurantPOS
             output.AddRange(EscPosText("TOTALI I TE GJITHE KAMARIEREVE\n"));
             output.AddRange(EscPosText(grandTotal.ToString("0.00") + " DEN\n"));
             output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
-            output.AddRange(EscPosText("\nRaporti mujor - Restaurant Merova\n\n"));
+            output.AddRange(EscPosText("\n" + reportType + " - Restaurant Merova\n\n"));
             output.AddRange(new byte[] { 0x1B, 0x64, 0x05 });
             output.AddRange(new byte[] { 0x1D, 0x56, 0x00 });
 
@@ -6882,12 +6987,12 @@ namespace RestaurantPOS
             output.AddRange(new byte[] { 0x1B, 0x61, 0x01 }); // center
             output.AddRange(GetLogoEscPosBytes(200));
             // Titull me shkronja me te medha; telefoni vjen menjehere poshte.
-            output.AddRange(new byte[] { 0x1D, 0x21, 0x10 }); // double width, normal height
+            output.AddRange(new byte[] { 0x1B, 0x4D, 0x00 }); // Font A
+            output.AddRange(new byte[] { 0x1D, 0x21, 0x01 }); // vetem pak me i gjere
             output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
-            output.AddRange(new byte[] { 0x1B, 0x4D, 0x01 }); // font B për emrin e restaurantit
             output.AddRange(EscPosText("RESTAURANT MEROVA\n"));
-            output.AddRange(new byte[] { 0x1B, 0x4D, 0x00 }); // rikthe fontin standard
-            output.AddRange(new byte[] { 0x1D, 0x21, 0x00 }); // normal size
+            output.AddRange(new byte[] { 0x1D, 0x21, 0x00 }); // rikthe madhesine normale
+            output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
             output.AddRange(new byte[] { 0x1B, 0x45, 0x00 });
             output.AddRange(EscPosText("Tel: 072 631 013\n"));
             output.AddRange(new byte[] { 0x1B, 0x61, 0x00 });
