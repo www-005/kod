@@ -1,3 +1,123 @@
+
+ok,por tekstin e nxjer afer njera tjetres pra
+E kuptova. Ti dëshiron që shkronjat e Restaurant Merova të kenë më shumë hapësirë mes tyre dhe të mos duken të ngjeshura.
+
+Provoje fontin Verdana, i cili ka shkronja më të gjera.
+
+Zëvendëso rreshtat 580–581 me këtë kod:
+
+restaurantTitle.Font = new Font("Verdana", 14.0f, FontStyle.Bold);
+
+Ky është rekomandimi im për Restaurant Merova. Nuk ndryshon asnjë pjesë tjetër të POS-it.
+
+po serish nuk e ndrishon faree fontin del njejttttt shiko koplet kodin miree
+
+Worked for 11s
+E kontrollova kodin e plotë të Form1.cs që më ke dërguar. E gjeta një problem në metodën EnsureRestaurantHeaderLogo().
+
+Problemi është ky:
+
+Kodi aktual përdor restaurantTitle.Font.FontFamily, pra ruan fontin ekzistues në vend që ta ndryshojë.
+
+Nëse logoja ekziston paraprakisht, metoda ekzekuton return dhe nuk arrin fare te ndryshimi i fontit.
+
+Si ta rregullojmë
+Gjej këtë pjesë në metodën EnsureRestaurantHeaderLogo():
+
+Control existingLogo = FindControlRecursive(panel1, "picRestaurantHeaderLogo");
+if (existingLogo != null)
+    return;
+
+Label restaurantTitle = FindRestaurantTitle(panel1);
+
+Zëvendësoje me këtë:
+
+Label restaurantTitle = FindRestaurantTitle(panel1);
+
+// Ndryshojme fontin e emrit te restorantit
+if (restaurantTitle != null)
+{
+    restaurantTitle.Font = new Font("Arial", 16F, FontStyle.Bold);
+    restaurantTitle.AutoSize = false;
+    restaurantTitle.TextAlign = ContentAlignment.MiddleLeft;
+}
+
+Control existingLogo = FindControlRecursive(panel1, "picRestaurantHeaderLogo");
+if (existingLogo != null)
+    return;
+
+Pastaj, më poshtë, te pjesa if (restaurantTitle != null), hiqe ndryshimin e vjetër të fontit:
+
+restaurantTitle.Font = new Font(
+    restaurantTitle.Font.FontFamily, 14.0f, FontStyle.Bold);
+
+Lëri vetëm:
+
+restaurantTitle.AutoSize = false;
+restaurantTitle.TextAlign = ContentAlignment.MiddleLeft;
+
+Pse Arial 16? Është font më i hapur dhe me shkronja të qarta.
+
+Një sqarim: WinForms Label nuk ka opsion të drejtpërdrejtë për hapësirën mes shkronjave. Fillimisht duhet të sigurohemi që fonti po ndryshohet realisht. Nuk do të prekim asnjë pjesë tjetër të Restaurant Merova POS.
+
+
+Pasted text(20261108-220531).txt
+Document
+kodi im eshte ky,ma jep komplet te perditesuar me fontin
+
+Worked for 32s
+E mora kodin tënd të plotë nga mesazhi i fundit dhe e përditësova pa ndryshuar pjesët e tjera të programit.
+
+Form1.cs i përditësuar
+Form1.cs
+
+285 KB
+
+Shkarko Form1.cs komplet
+
+Çfarë ndryshova?
+Fonti: Segoe UI, 15, Bold.
+
+Shtova hapësirë të vogël ndërmjet shkronjave duke përdorur karakterin Unicode Hair Space.
+
+Rregullova renditjen e kodit që fonti të aplikohet edhe kur logoja është shtuar më parë.
+
+Nuk ndryshova dizajnin e kamarierëve, tavolinave, ushqimeve apo llogarisë.
+
+Si ta instalosh
+Ruaje kopjen rezervë të kodit aktual.
+
+Shkarko skedarin e ri.
+
+Zëvendëso Form1.cs.
+
+Në Visual Studio kliko Build → Rebuild Solution.
+
+Këtë version duhet ta testosh në program para se ta instalosh në kompjuterin e restorantit.
+
+
+Form1.cs
+Code
+
+Pasted text(20261108-220822).txt
+Document
+o idiot,ma jep kodin komplet se nuk ma hapen filen qe ma ke dgu
+
+Worked for 16s
+
+
+
+Më fal. E kuptova — dëshiron kodin komplet të Form1.cs, jo vetëm udhëzime.
+
+Kodi i plotë ka 7,470 rreshta. Po ta jap në formatin .txt, që mund ta hapësh me Notepad ose VS Code dhe ta kopjosh të gjithin:
+
+Hap kodin komplet – Form1_KODI_KOMPLET.txt
+
+Ky është kodi i plotë me ndryshimin e fontit dhe hapësirës te emri Restaurant Merova. Nuk e kam verifikuar ende me Build në Visual Studio.
+
+
+Form1_KODI_KOMPLET.txt
+Document
 using System;
 using System.Data;
 using System.Data.SqlClient;
@@ -530,6 +650,19 @@ namespace RestaurantPOS
             if (panel1 == null)
                 return;
 
+            // Gjejmë titullin dhe aplikojmë formatimin para kontrollit të logos.
+            // Kështu fonti ndryshohet edhe kur logoja është shtuar më herët.
+            Label restaurantTitle = FindRestaurantTitle(panel1);
+
+            if (restaurantTitle != null)
+            {
+                restaurantTitle.Font = new Font("Segoe UI", 15.0f, FontStyle.Bold);
+                restaurantTitle.Text = "R\u200Ae\u200As\u200At\u200Aa\u200Au\u200Ar\u200Aa\u200An\u200At  M\u200Ae\u200Ar\u200Ao\u200Av\u200Aa";
+                restaurantTitle.AutoSize = false;
+                restaurantTitle.TextAlign = ContentAlignment.MiddleLeft;
+                restaurantTitle.UseCompatibleTextRendering = true;
+            }
+
             string headerLogoPath = System.IO.File.Exists(RestaurantHeaderLogoPath)
                 ? RestaurantHeaderLogoPath
                 : RestaurantLogoPath;
@@ -545,7 +678,6 @@ namespace RestaurantPOS
             if (existingLogo != null)
                 return;
 
-            Label restaurantTitle = FindRestaurantTitle(panel1);
             Control targetParent = restaurantTitle != null ? restaurantTitle.Parent : panel1;
 
             PictureBox logo = new PictureBox();
@@ -570,19 +702,9 @@ namespace RestaurantPOS
 
             if (restaurantTitle != null)
             {
-                // Logoja vendoset para titullit dhe titulli bëhet pak më kompakt.
                 int logoX = Math.Max(4, restaurantTitle.Left - logo.Width - 10);
                 int logoY = Math.Max(2, restaurantTitle.Top + (restaurantTitle.Height - logo.Height) / 2);
                 logo.Location = new Point(logoX, logoY);
-
-                try
-                {
-                    restaurantTitle.Font = new Font(
-                        restaurantTitle.Font.FontFamily, 14.0f, FontStyle.Bold);
-                    restaurantTitle.AutoSize = false;
-                    restaurantTitle.TextAlign = ContentAlignment.MiddleLeft;
-                }
-                catch { }
             }
             else
             {
@@ -7466,3 +7588,7 @@ namespace RestaurantPOS
         }
     }
 }
+
+
+
+
