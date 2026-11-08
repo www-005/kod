@@ -7000,7 +7000,7 @@ namespace RestaurantPOS
             output.AddRange(GetLogoEscPosBytes(200));
             // Titull me shkronja me te medha; telefoni vjen menjehere poshte.
             output.AddRange(new byte[] { 0x1B, 0x4D, 0x00 }); // Font A
-            output.AddRange(new byte[] { 0x1D, 0x21, 0x01 }); // vetem pak me i gjere
+            output.AddRange(new byte[] { 0x1D, 0x21, 0x11 }); // titull me i madh: dyfish gjeresi dhe lartesi
             output.AddRange(new byte[] { 0x1B, 0x45, 0x01 });
             output.AddRange(EscPosText("RESTAURANT MEROVA\n"));
             output.AddRange(new byte[] { 0x1D, 0x21, 0x00 }); // rikthe madhesine normale
