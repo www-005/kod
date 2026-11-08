@@ -123,8 +123,11 @@ namespace RestaurantPOS
         // =========================================
         // PRINTERI I TESTIMIT
         // =========================================
-        // Printeri i porosive dhe llogarisë: POS-80 (80mm).
+        // Printeri USB: SHANGT dhe LLOGARITE.
         private const string TestPrinterName = "Generic / Text Only";
+
+        // Printeri LAN (RJ45): KUZHINA dhe PICERIA.
+        private const string KitchenPrinterName = "Printer LAN";
         private static readonly string RestaurantLogoPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "restaurant-logo.png");
         // Logoja e veçantë e header-it; logoja e printimit/POS mbetet restaurant-logo.png.
         private static readonly string RestaurantHeaderLogoPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "restaurant-logo1.png");
@@ -6355,17 +6358,74 @@ namespace RestaurantPOS
                 return false;
             }
 
-            // Renditja është e qëndrueshme: I sallatat, II pjatat kryesore,
-            // III picat; çdo grup dërgohet si fletë më vete dhe pritet veçmas.
-            List<int> groupOrders = new List<int>();
+            // Ndarja sipas printerit:
+            // Generic / Text Only = vetem SHANGT (grupi 4).
+            // Printer LAN = Kuzhina, Parahajet, Pjatat kryesore dhe Piceria.
+            List<int> shanghtGroups = new List<int>();
+            List<int> kitchenGroups = new List<int>();
+
             foreach (PendingPrintItem item in items)
             {
                 int groupOrder = GetPrintGroupOrder(item);
-                if (!groupOrders.Contains(groupOrder))
-                    groupOrders.Add(groupOrder);
+                if (groupOrder == 4)
+                {
+                    if (!shanghtGroups.Contains(groupOrder))
+                        shanghtGroups.Add(groupOrder);
+                }
+                else
+                {
+                    // Grupet 1, 2, 3 dhe artikujt pa grup të përcaktuar
+                    // dërgohen te printeri LAN, që asnjë artikull të mos humbasë.
+                    if (!kitchenGroups.Contains(groupOrder))
+                        kitchenGroups.Add(groupOrder);
+                }
             }
-            groupOrders.Sort();
 
+            shanghtGroups.Sort();
+            kitchenGroups.Sort();
+
+            // Dërgojmë fillimisht biletat e kuzhinës/picerisë në LAN.
+            // Më pas dërgojmë vetëm SHANGT në printerin USB.
+            // MarkOrderItemsAsPrinted thirret nga kodi ekzistues vetëm pasi kjo
+            // metodë të kthehet me sukses për të dy printerët.
+            if (kitchenGroups.Count > 0)
+            {
+                byte[] kitchenBytes = BuildOrderPrinterBytes(
+                    items, kitchenGroups, waiterName, tableNumber);
+
+                if (!RawPrinterHelper.SendBytesToPrinter(KitchenPrinterName, kitchenBytes))
+                {
+                    throw new Exception(
+                        "Printeri LAN nuk pranoi porosinë e Kuzhinës/Picerisë. " +
+                        "Kontrollo që printeri të jetë i ndezur dhe emri në Windows të jetë '" +
+                        KitchenPrinterName + "'.");
+                }
+            }
+
+            if (shanghtGroups.Count > 0)
+            {
+                byte[] shanghtBytes = BuildOrderPrinterBytes(
+                    items, shanghtGroups, waiterName, tableNumber);
+
+                if (!RawPrinterHelper.SendBytesToPrinter(TestPrinterName, shanghtBytes))
+                {
+                    throw new Exception(
+                        "Printeri USB nuk pranoi porosinë e SHANGT-it. " +
+                        "Kontrollo që printeri të jetë i ndezur dhe emri në Windows të jetë '" +
+                        TestPrinterName + "'.");
+                }
+            }
+
+            return true;
+        }
+
+        // Përgatit biletat vetëm për grupet që i përkasin printerit përkatës.
+        private byte[] BuildOrderPrinterBytes(
+            List<PendingPrintItem> items,
+            List<int> groupOrders,
+            string waiterName,
+            int tableNumber)
+        {
             List<byte> output = new List<byte>();
             output.AddRange(new byte[] { 0x1B, 0x40 }); // ESC @ initialize
 
@@ -6389,10 +6449,9 @@ namespace RestaurantPOS
                     if (GetPrintGroupOrder(item) != groupOrder)
                         continue;
 
-                    // Artikulli majtas; shuma e rreshtit e rreshtuar në skajin e djathtë.
                     string itemText = item.Quantity + " x " + CleanForPos(item.ProductName);
                     string amountText = (item.UnitPrice * item.Quantity).ToString("0.00") + " den";
-                    const int ticketWidth = 42; // afërsisht 42 karaktere në letër 80 mm
+                    const int ticketWidth = 42;
                     int itemTextMax = ticketWidth - amountText.Length - 1;
                     if (itemText.Length > itemTextMax)
                         itemText = itemText.Substring(0, itemTextMax);
@@ -6401,24 +6460,17 @@ namespace RestaurantPOS
                     output.AddRange(EscPosText(ticketLine + "\n"));
                     output.AddRange(new byte[] { 0x1B, 0x45, 0x00 }); // bold off
 
-                    // Komenti shtypet menjëherë poshtë ushqimit, pa fjalën "Koment:".
                     if (!string.IsNullOrWhiteSpace(item.Comment))
-                    {
                         output.AddRange(EscPosText("  " + CleanForPos(item.Comment.Trim()) + "\n"));
-                    }
                 }
 
                 output.AddRange(EscPosText("\n------------------------------------------\n\n"));
                 output.AddRange(new byte[] { 0x1B, 0x64, 0x04 }); // feed 4 lines
-                output.AddRange(new byte[] { 0x1D, 0x56, 0x00 }); // cut after THIS ticket
+                output.AddRange(new byte[] { 0x1D, 0x56, 0x00 }); // cut after ticket
             }
 
-            if (!RawPrinterHelper.SendBytesToPrinter(TestPrinterName, output.ToArray()))
-                throw new Exception("Printeri nuk pranoi te dhenat RAW. Kontrollo lidhjen dhe porten e printerit.");
-
-            return true;
+            return output.ToArray();
         }
-
 
         private void MarkOrderItemsAsPrinted(int orderId)
         {
